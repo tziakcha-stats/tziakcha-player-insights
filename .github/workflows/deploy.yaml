@@ -1,13 +1,16 @@
-# build latest v* tag and upload dist diectory to gh-pages branch.
-name: deploy
+# build latest v* tag and publish production release.
+name: release
 
 on:
   push:
-    branches:
+    tags:
       - v*
 
+permissions:
+  contents: write
+
 jobs:
-  deploy:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -21,12 +24,24 @@ jobs:
       - run: npm ci
       - run: npm run build
 
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Package dist
+        run: |
+          cd dist
+          zip -r ../tziakcha-player-insights-${{ github.ref_name }}.zip .
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-          enable_jekyll: true
-          commit_message: deploy ${{ github.ref }}
-          user_name: github-actions[bot]
-          user_email: github-actions[bot]@users.noreply.github.com
+          name: release-dist-${{ github.ref_name }}
+          path: |
+            ./dist
+            ./tziakcha-player-insights-${{ github.ref_name }}.zip
+          if-no-files-found: error
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          files: ./tziakcha-player-insights-${{ github.ref_name }}.zip
+          generate_release_notes: true
