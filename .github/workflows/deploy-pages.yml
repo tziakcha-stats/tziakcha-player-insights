@@ -9,6 +9,11 @@ on:
       - 'readme.md'
       - 'readme.cn.md'
       - 'docs/**'
+      - 'src/**'
+      - 'config/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
       - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 
@@ -34,6 +39,20 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
+      - name: Setup node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "lts/*"
+          cache: "npm"
+
+      - name: Build userscript
+        run: |
+          npm ci
+          npm run build
+
+      - name: Validate userscript build output
+        run: test -f dist/index.prod.user.js
+
       - name: Create HTML from README
         run: |
           mkdir -p _site
@@ -55,7 +74,7 @@ jobs:
               <meta charset="UTF-8">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
               <title>雀渣用户高级分析工具</title>
-              <link rel="icon" type="image/png" href="doc/img/icon.png">
+              <link rel="icon" type="image/png" href="docs/img/icon.png">
               <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.0/github-markdown.min.css">
               <style>
                   body {
@@ -93,6 +112,8 @@ jobs:
           if [ -d "docs" ]; then
             cp -r docs _site/
           fi
+          cp dist/index.prod.user.js _site/index.prod.user.js
+          touch _site/.nojekyll
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
