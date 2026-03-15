@@ -19,6 +19,7 @@ module.exports = {
   source: repository.url,
   license: 'MIT',
   description: description,
+  "description:en": description,
   match: [
     "*://tziakcha.net/*",
     "*://tziakcha.net/record/*",

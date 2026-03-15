@@ -1,7 +1,7 @@
 <p align="center">
 <img width="128px" src="docs/img/icon.png" align="center" alt="Logo" />
 <h2 align="center">雀渣用户高级分析工具</h2>
-<p align="center"><a href="https://github.com/tziakcha-stats/tziakcha-player-insights"><img src="https://img.shields.io/badge/Github-181717?style=for-the-badge&logo=github&logoColor=white"></a><a href="https://greasyfork.org/zh-CN/scripts/560977"><img src="https://img.shields.io/badge/Greasy%20Fork-560977-grey.svg?colorA=900000&style=for-the-bsadge"></a> </p>
+<p align="center"><a href="https://github.com/tziakcha-stats/tziakcha-player-insights"><img src="https://img.shields.io/badge/Github-181717?style=for-the-badge&logo=github&logoColor=white"></a><a href="https://greasyfork.org/zh-CN/scripts/569766"><img src="https://img.shields.io/badge/Greasy%20Fork-560977-grey.svg?colorA=900000&style=for-the-bsadge"></a> </p>
 <p align="center"><a href="https://github.com/tziakcha-stats/tziakcha-player-insights"><img src="https://img.shields.io/github/license/tziakcha-stats/tziakcha-player-insights?style=for-the-badge"> <img src="https://img.shields.io/github/stars/tziakcha-stats/tziakcha-player-insights?style=for-the-badge"></a> <a href="https://choimoe.github.io/chaga-reviewer-script/"><img src="https://img.shields.io/github/actions/workflow/status/tziakcha-stats/tziakcha-player-insights/deploy-pages.yml?label=deploy%20pages&style=for-the-badge"></a></p>
 </p>
 
@@ -9,7 +9,7 @@
 
 这里特别鸣谢 CHAGA 提供的看谱 API，主要代码来自 [tziakcha/reviewer-homepage](https://github.com/tziakcha/reviewer-homepage)，本项目只是写了一点简陋的显示和简单的优化，放到了油猴脚本。
 
-![demo](docs/img/chaga_view.jpg)
+![demo](https://cdn.jsdelivr.net/gh/tziakcha-stats/tziakcha-player-insights/docs/img/chaga_view.jpg)
 
 ## 安装
 
@@ -21,19 +21,19 @@
 
 请注意：脚本需要开启[插件界面](edge://extensions/) / 设置界面的 **开发人员模式**，然后在 **插件的设置** 中打开 **站点访问权限和相关使用权限**，否则会无法读取界面信息导致失效！
 
-![dev mode](docs/img/devmode.png)
+![dev mode](https://cdn.jsdelivr.net/gh/tziakcha-stats/tziakcha-player-insights/docs/img/devmode.png)
 
 
 
 ---
 
-接着访问 <a href="https://greasyfork.org/zh-CN/scripts/560977"><img src="https://img.shields.io/badge/Greasy%20Fork-560977-grey.svg?colorA=900000&style=for-the-badge"></a> 安装脚本（或直接从本仓库下载/复制 <a href="https://github.com/tziakcha-stats/tziakcha-player-insights/raw/refs/heads/main/chaga_reviewer.user.js"><img src="https://img.shields.io/badge/Github-181717?style=for-the-badge&logo=github&logoColor=white"></a>）。脚本会在雀渣牌谱页面（`https://tziakcha.net/record/*`）自动启用。
+接着访问 <a href="https://greasyfork.org/zh-CN/scripts/569766"><img src="https://img.shields.io/badge/Greasy%20Fork-569766-grey.svg?colorA=900000&style=for-the-badge"></a> 安装脚本（或直接从本仓库下载/复制 <a href="https://tziakcha-stats.github.io/tziakcha-player-insights/index.prod.user.js"><img src="https://img.shields.io/badge/Github-181717?style=for-the-badge&logo=github&logoColor=white"></a>）。脚本会在雀渣页面（`https://tziakcha.net/*`）自动启用。
 
 ## 功能
 
 |用户风格|一键家访|
 |:--:|:--:|
-|![style](docs/img/tech.png)|![homepage](docs/img/homepage.png)|
+|![style](https://cdn.jsdelivr.net/gh/tziakcha-stats/tziakcha-player-insights/docs/img/tech.png)|![homepage](https://cdn.jsdelivr.net/gh/tziakcha-stats/tziakcha-player-insights/docs/img/homepage.png)|
 
 脚本在牌谱回放页面的控制面板右侧提供以下功能：
 
@@ -45,7 +45,7 @@
 
 **加载状态指示**：实时显示当前步数和四个座位的数据加载状态（`✓` 已加载，`·` 加载中，`✗` 加载失败）。
 
-![controller](docs/img/ctrl.jpg)
+![controller](https://cdn.jsdelivr.net/gh/tziakcha-stats/tziakcha-player-insights/docs/img/ctrl.jpg)
 
 ## 实现
 
