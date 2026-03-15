@@ -3,24 +3,32 @@ const {
   dependencies,
   repository,
   version,
+  description,
 } = require("../package.json");
 
 module.exports = {
   name: {
-    $: "webpack-userscript-template",
-    cn: "中文名",
-    en: "english name",
+    $: "tziakcha-player-insights",
+    cn: "雀渣用户高级分析工具",
+    en: "Tziakcha Player Insights",
   },
-  namespace: "https://trim21.me/",
+  icon: "https://cdn.jsdelivr.net/gh/Choimoe/chaga-reviewer-script/doc/img/icon.png",
+  namespace: "https://greasyfork.org/users/1543716",
   version: version,
   author: author,
   source: repository.url,
-  // 'license': 'MIT',
-  match: ["*://www.example.com/", "*://example.com/*"],
-  require: [
-    `https://cdn.jsdelivr.net/npm/jquery@${dependencies.jquery}/dist/jquery.min.js`,
+  license: 'MIT',
+  description: description,
+  match: [
+    "*://tziakcha.net/*",
+    "*://tziakcha.net/record/*",
+    "*://tziakcha.net/user/tech/*",
+    "*://tziakcha.net/history/*",
   ],
-  grant: ["GM.xmlHttpRequest"],
+  require: [
+    // `https://cdn.jsdelivr.net/npm/jquery@${dependencies.jquery}/dist/jquery.min.js`,
+  ],
+  grant: ["GM.xmlHttpRequest", "unsafeWindow"],
   connect: ["httpbin.org"],
-  "run-at": "document-end",
+  "run-at": "document-start",
 };

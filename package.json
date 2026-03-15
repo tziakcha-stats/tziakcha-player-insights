@@ -1,10 +1,10 @@
 {
-  "name": "webpack-userscript-template",
-  "description": "Build your UserScript with webpack",
-  "version": "0.0.1",
+  "name": "tziakcha-player-insights",
+  "description": "适用于雀渣平台的个人信息分析工具",
+  "version": "2.0.0",
   "author": {
-    "name": "Trim21",
-    "email": "trim21me@gmail.com"
+    "name": "Choimoe",
+    "email": "qwqshq@gmail.com"
   },
   "scripts": {
     "format": "prettier -w ./",
@@ -16,13 +16,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/trim21/webpack-userscript-template"
+    "url": "https://github.com/tziakcha-stats/tziakcha-player-insights"
   },
   "private": true,
-  "dependencies": {
-    "@trim21/gm-fetch": "^0.3.0",
-    "jquery": "^4.0.0"
-  },
+  "dependencies": {},
   "lint-staged": {
     "*.{js,jsx,ts,tsx,json}": [
       "prettier --ignore-path ./.prettierignore --write "
