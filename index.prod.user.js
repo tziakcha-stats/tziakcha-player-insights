@@ -23,6 +23,160 @@
 /******/ 	"use strict";
 /******/ 	var __webpack_modules__ = ({
 
+/***/ "./node_modules/css-loader/dist/cjs.js!./node_modules/less-loader/dist/cjs.js!./src/features/record/reviewer/ui.less"
+(module, __webpack_exports__, __webpack_require__) {
+
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   A: () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__("./node_modules/css-loader/dist/runtime/noSourceMaps.js");
+/* harmony import */ var _node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__("./node_modules/css-loader/dist/runtime/api.js");
+/* harmony import */ var _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1__);
+// Imports
+
+
+var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default()((_node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0___default()));
+// Module
+___CSS_LOADER_EXPORT___.push([module.id, `.highlight-first-tile {
+  box-shadow: 0 0 0 3px red, inset 0 0 0 3px red !important;
+}
+.tile-weight-bar {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  height: 0;
+  max-height: 50px;
+  background: #ff4444;
+  transition: height 0.3s ease;
+  z-index: 10;
+  pointer-events: none;
+}
+.review-container {
+  position: relative;
+  min-height: 128px;
+}
+.review-bg-image {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 128px;
+  height: 128px;
+  opacity: 0.5;
+  z-index: 0;
+  pointer-events: none;
+}
+#review {
+  position: relative;
+  z-index: 1;
+  padding-right: 10px;
+}
+`, ""]);
+// Exports
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
+
+
+/***/ },
+
+/***/ "./node_modules/css-loader/dist/cjs.js!./node_modules/less-loader/dist/cjs.js!./src/features/tech/zumgze/index.less"
+(module, __webpack_exports__, __webpack_require__) {
+
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   A: () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__("./node_modules/css-loader/dist/runtime/noSourceMaps.js");
+/* harmony import */ var _node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__("./node_modules/css-loader/dist/runtime/api.js");
+/* harmony import */ var _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1__);
+// Imports
+
+
+var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default()((_node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0___default()));
+// Module
+___CSS_LOADER_EXPORT___.push([module.id, `#reviewer-zumgze-wrap .zumgze-summary {
+  font-weight: 600;
+}
+#reviewer-zumgze-wrap .zumgze-similarity {
+  margin-top: 0.2em;
+}
+#reviewer-zumgze-wrap .zumgze-score-trigger {
+  cursor: help;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+#reviewer-zumgze-wrap .zumgze-score-help,
+#reviewer-zumgze-wrap .zumgze-score-ci {
+  margin-top: 0.15em;
+  font-size: 12px;
+  color: #6c757d;
+}
+#reviewer-zumgze-wrap .zumgze-col-name {
+  width: 7em;
+}
+#reviewer-zumgze-wrap .zumgze-col-player,
+#reviewer-zumgze-wrap .zumgze-col-ref {
+  width: 6em;
+}
+#reviewer-zumgze-wrap .zumgze-bar-wrap {
+  position: relative;
+  width: 100%;
+  height: 20px;
+  border-radius: 3px;
+  background: #f8f9fa;
+  overflow: hidden;
+}
+#reviewer-zumgze-wrap .zumgze-bar-zero {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #6c757d;
+  opacity: 0.6;
+  z-index: 1;
+}
+#reviewer-zumgze-wrap .zumgze-bar-fill {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  border-radius: 2px;
+  z-index: 2;
+}
+#reviewer-zumgze-wrap .zumgze-bar-label {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  font-weight: 600;
+  z-index: 3;
+}
+#reviewer-zumgze-wrap .zumgze-bar-label-left {
+  right: auto;
+  left: 6px;
+}
+#reviewer-zumgze-wrap .zumgze-ref-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5em;
+  margin-bottom: 0.35em;
+}
+#reviewer-zumgze-wrap .zumgze-ref-toggle,
+#reviewer-zumgze-wrap .zumgze-table-toggle {
+  font-size: 12px;
+  line-height: 1.2;
+  padding: 0.2em 0.65em;
+}
+`, ""]);
+// Exports
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
+
+
+/***/ },
+
 /***/ "./node_modules/css-loader/dist/cjs.js!./node_modules/less-loader/dist/cjs.js!./src/style/main.less"
 (module, __webpack_exports__, __webpack_require__) {
 
@@ -905,8 +1059,37 @@ function installRecordJsonParseGuard() {
     }
 }
 
-;// ./src/features/record/reviewer-state.ts
-/* unused harmony import specifier */ var reviewer_state_w;
+// EXTERNAL MODULE: ./node_modules/css-loader/dist/cjs.js!./node_modules/less-loader/dist/cjs.js!./src/features/record/reviewer/ui.less
+var ui = __webpack_require__("./node_modules/css-loader/dist/cjs.js!./node_modules/less-loader/dist/cjs.js!./src/features/record/reviewer/ui.less");
+;// ./src/features/record/reviewer/ui.less
+
+      
+      
+      
+      
+      
+      
+      
+      
+      
+
+var ui_options = {};
+
+ui_options.styleTagTransform = (styleTagTransform_default());
+ui_options.setAttributes = (setAttributesWithoutAttributes_default());
+ui_options.insert = insertBySelector_default().bind(null, "head");
+ui_options.domAPI = (styleDomAPI_default());
+ui_options.insertStyleElement = (insertStyleElement_default());
+
+var ui_update = injectStylesIntoStyleTag_default()(ui/* default */.A, ui_options);
+
+
+
+
+       /* harmony default export */ const reviewer_ui = (ui/* default */.A && ui/* default */.A.locals ? ui/* default */.A.locals : undefined);
+
+;// ./src/features/record/reviewer/state.ts
+/* unused harmony import specifier */ var state_w;
 
 function ensureReviewStores() {
     if (!w.__reviews) {
@@ -920,9 +1103,9 @@ function ensureReviewStores() {
     }
 }
 function resetReviewStores() {
-    reviewer_state_w.__reviews = {};
-    reviewer_state_w.__reviews_filled = {};
-    reviewer_state_w.__reviews_seats = [undefined, undefined, undefined, undefined];
+    state_w.__reviews = {};
+    state_w.__reviews_filled = {};
+    state_w.__reviews_seats = [undefined, undefined, undefined, undefined];
 }
 function getReviews() {
     ensureReviewStores();
@@ -953,7 +1136,7 @@ function getTZInstance() {
     return w.__review_tz_instance ?? null;
 }
 
-;// ./src/features/record/reviewer-render.ts
+;// ./src/features/record/reviewer/render.ts
 
 
 
@@ -1200,56 +1383,11 @@ function startStepWatcher(runtime) {
     w.setInterval(poll, 200);
 }
 
-;// ./src/features/record/reviewer-ui.ts
+;// ./src/features/record/reviewer/ui.ts
 
 
 
-function installStyle() {
-    const styleId = "reviewer-record-style";
-    if (document.getElementById(styleId)) {
-        return;
-    }
-    const style = document.createElement("style");
-    style.id = styleId;
-    style.textContent = `
-    .highlight-first-tile {
-      box-shadow: 0 0 0 3px red, inset 0 0 0 3px red !important;
-    }
-    .tile-weight-bar {
-      position: absolute;
-      bottom: 100%;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 10px;
-      height: 0;
-      max-height: 50px;
-      background: #ff4444;
-      transition: height 0.3s ease;
-      z-index: 10;
-      pointer-events: none;
-    }
-    .review-container {
-      position: relative;
-      min-height: 128px;
-    }
-    .review-bg-image {
-      position: absolute;
-      top: 0;
-      right: 0;
-      width: 128px;
-      height: 128px;
-      opacity: 0.50;
-      z-index: 0;
-      pointer-events: none;
-    }
-    #review {
-      position: relative;
-      z-index: 1;
-      padding-right: 10px;
-    }
-  `;
-    document.head.appendChild(style);
-}
+
 function toggleUserInfo(hide) {
     const nameElements = document.querySelectorAll(".name");
     const eloElements = document.querySelectorAll(".elo");
@@ -1305,7 +1443,6 @@ function createReviewerUI(runtime) {
     if (document.getElementById("review")) {
         return;
     }
-    installStyle();
     let hideUserInfo = false;
     const ctrlRtDiv = document.createElement("div");
     ctrlRtDiv.classList.add("ctrl-rt", "fs-sm");
@@ -1421,7 +1558,7 @@ function createReviewerUI(runtime) {
     infoLog("UI elements created");
 }
 
-;// ./src/features/record/reviewer-data.ts
+;// ./src/features/record/reviewer/data.ts
 
 
 
@@ -1678,7 +1815,7 @@ function interceptTZ() {
     }, 50);
 }
 
-;// ./src/features/record/reviewer-init.ts
+;// ./src/features/record/reviewer/init.ts
 
 
 
@@ -1747,6 +1884,35 @@ function initRecordFeature(href) {
     return true;
 }
 
+// EXTERNAL MODULE: ./node_modules/css-loader/dist/cjs.js!./node_modules/less-loader/dist/cjs.js!./src/features/tech/zumgze/index.less
+var zumgze = __webpack_require__("./node_modules/css-loader/dist/cjs.js!./node_modules/less-loader/dist/cjs.js!./src/features/tech/zumgze/index.less");
+;// ./src/features/tech/zumgze/index.less
+
+      
+      
+      
+      
+      
+      
+      
+      
+      
+
+var zumgze_options = {};
+
+zumgze_options.styleTagTransform = (styleTagTransform_default());
+zumgze_options.setAttributes = (setAttributesWithoutAttributes_default());
+zumgze_options.insert = insertBySelector_default().bind(null, "head");
+zumgze_options.domAPI = (styleDomAPI_default());
+zumgze_options.insertStyleElement = (insertStyleElement_default());
+
+var zumgze_update = injectStylesIntoStyleTag_default()(zumgze/* default */.A, zumgze_options);
+
+
+
+
+       /* harmony default export */ const tech_zumgze = (zumgze/* default */.A && zumgze/* default */.A.locals ? zumgze/* default */.A.locals : undefined);
+
 ;// ./src/features/tech/refs.ts
 const FAN_ITEMS = [
     { idx: 36, name: "全不靠" },
@@ -1808,60 +1974,44 @@ const REF_MAPS = {
     },
 };
 
-;// ./src/features/tech/zumgze.ts
+;// ./src/features/tech/zumgze/calc.ts
 
-
-
+// --- 相似度评分参数 ---
 const CHAGA_SIMILARITY_D = 21;
 const CHAGA_SIMILARITY_C = -0.23;
 const CHAGA_SIMILARITY_A = 4;
+// --- 置信区间参数 ---
 const CHAGA_CI_Z95 = 1.96;
 const CHAGA_REF_SAMPLE_SIZE = 3416686;
-let currentRefKey = "chaga";
-let latestFanData = {};
-function ensureStyle() {
-    const styleId = "reviewer-zumgze-style";
-    if (document.getElementById(styleId)) {
-        return;
-    }
-    const style = document.createElement("style");
-    style.id = styleId;
-    style.textContent = `
-    #reviewer-zumgze-wrap .zumgze-summary { font-weight: 600; }
-    #reviewer-zumgze-wrap .zumgze-similarity { margin-top: 0.2em; }
-    #reviewer-zumgze-wrap .zumgze-score-trigger { cursor: help; text-decoration: underline dotted; text-underline-offset: 2px; }
-    #reviewer-zumgze-wrap .zumgze-score-help, #reviewer-zumgze-wrap .zumgze-score-ci { margin-top: 0.15em; font-size: 12px; color: #6c757d; }
-    #reviewer-zumgze-wrap .zumgze-col-name { width: 7em; }
-    #reviewer-zumgze-wrap .zumgze-col-player, #reviewer-zumgze-wrap .zumgze-col-ref { width: 6em; }
-    #reviewer-zumgze-wrap .zumgze-bar-wrap { position: relative; width: 100%; height: 20px; border-radius: 3px; background: #f8f9fa; overflow: hidden; }
-    #reviewer-zumgze-wrap .zumgze-bar-zero { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: #6c757d; opacity: 0.6; z-index: 1; }
-    #reviewer-zumgze-wrap .zumgze-bar-fill { position: absolute; top: 2px; bottom: 2px; border-radius: 2px; z-index: 2; }
-    #reviewer-zumgze-wrap .zumgze-bar-label { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 12px; font-weight: 600; z-index: 3; }
-    #reviewer-zumgze-wrap .zumgze-bar-label-left { right: auto; left: 6px; }
-    #reviewer-zumgze-wrap .zumgze-ref-toolbar { display: flex; align-items: center; justify-content: flex-start; gap: 0.5em; margin-bottom: 0.35em; }
-    #reviewer-zumgze-wrap .zumgze-ref-toggle, #reviewer-zumgze-wrap .zumgze-table-toggle { font-size: 12px; line-height: 1.2; padding: 0.2em 0.65em; }
-  `;
-    document.head.appendChild(style);
-}
+/**
+ * 将 zumgze 距离映射为 CHAGA 度评分（0~100）。
+ * 使用 Sigmoid 变换后开方缩放：score = sqrt(σ(c·(d-D))) × 100 + A
+ */
 function chagaScoreFromDistance(distance) {
     const h = 1 / (1 + Math.exp(-CHAGA_SIMILARITY_C * (distance - CHAGA_SIMILARITY_D)));
     const scoreRaw = Math.sqrt(h) * 100 + CHAGA_SIMILARITY_A;
     return Math.max(0, Math.min(100, scoreRaw));
 }
-function renderZumgze(fan = {}) {
-    latestFanData = fan || {};
-    const currentRef = REF_MAPS[currentRefKey].values;
+/**
+ * 根据玩家番种数据与参考分布，计算平均差、CHAGA 度及 95% 置信区间。
+ *
+ * @param fan       玩家番种计数，键格式为 `c{idx}` / `d{idx}`
+ * @param refValues 参考分布，键为番种名，值为百分比（0~100）
+ */
+function computeZumgzeStats(fan, refValues) {
     const total = (fan.c0 || 0) + (fan.d0 || 0);
     let zumgze = 0;
     const rows = FAN_ITEMS.map(({ idx, name }) => {
         const count = (fan[`c${idx}`] || 0) + (fan[`d${idx}`] || 0);
         const playerPct = total ? (count / total) * 100 : 0;
-        const refPct = currentRef[name] ?? 0;
+        const refPct = refValues[name] ?? 0;
         const diff = playerPct - refPct;
         zumgze += Math.abs(diff);
         return { name, playerPct, refPct, diff };
     });
+    // 概率空间下的总差值（用于置信区间计算）
     const dProb = rows.reduce((sum, row) => sum + Math.abs(row.playerPct / 100 - row.refPct / 100), 0);
+    // 方差：参考样本方差 + 玩家样本方差
     const varD = rows.reduce((sum, row) => sum +
         ((row.playerPct / 100) * (1 - row.playerPct / 100)) /
             CHAGA_REF_SAMPLE_SIZE +
@@ -1872,7 +2022,22 @@ function renderZumgze(fan = {}) {
     const chagaSimilarity = chagaScoreFromDistance(zumgze);
     const chagaScoreLower = chagaScoreFromDistance(ciLowerProb * 100);
     const chagaScoreUpper = chagaScoreFromDistance(ciUpperProb * 100);
-    rows.sort((a, b) => {
+    return { rows, zumgze, chagaSimilarity, chagaScoreLower, chagaScoreUpper };
+}
+
+;// ./src/features/tech/zumgze/index.ts
+
+
+
+
+
+let currentRefKey = "chaga";
+let latestFanData = {};
+function renderZumgze(fan = {}) {
+    latestFanData = fan || {};
+    const currentRef = REF_MAPS[currentRefKey].values;
+    const { rows, zumgze, chagaSimilarity, chagaScoreLower, chagaScoreUpper } = computeZumgzeStats(fan, currentRef);
+    const sortedRows = [...rows].sort((a, b) => {
         const aPositive = a.diff >= 0;
         const bPositive = b.diff >= 0;
         if (aPositive !== bPositive) {
@@ -1880,8 +2045,8 @@ function renderZumgze(fan = {}) {
         }
         return b.diff - a.diff;
     });
-    const maxAbsDiff = Math.max(...rows.map((item) => Math.abs(item.diff)), 1e-9);
-    const rowsHtml = rows
+    const maxAbsDiff = Math.max(...sortedRows.map((item) => Math.abs(item.diff)), 1e-9);
+    const rowsHtml = sortedRows
         .map((item) => {
         const widthPercent = (Math.abs(item.diff) / maxAbsDiff) * 50;
         const isPositive = item.diff >= 0;
@@ -1990,7 +2155,6 @@ function initTechZumgze() {
         w.setTimeout(initTechZumgze, 100);
         return;
     }
-    ensureStyle();
     fetch(`/_qry/user/tech/${w.location.search}`, {
         method: "POST",
         credentials: "include",
