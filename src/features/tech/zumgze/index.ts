@@ -1,62 +1,20 @@
-import { w } from "../../shared/env";
-import { warnLog } from "../../shared/logger";
-import "./zumgze.less";
-import { FAN_ITEMS, REF_MAPS, RefKey } from "./refs";
-
-type FanData = Record<string, number>;
-
-const CHAGA_SIMILARITY_D = 21;
-const CHAGA_SIMILARITY_C = -0.23;
-const CHAGA_SIMILARITY_A = 4;
-const CHAGA_CI_Z95 = 1.96;
-const CHAGA_REF_SAMPLE_SIZE = 3416686;
+import { w } from "../../../shared/env";
+import { warnLog } from "../../../shared/logger";
+import "./index.less";
+import { REF_MAPS, RefKey } from "../refs";
+import { FanData, ZumgzeRow, computeZumgzeStats } from "./calc";
 
 let currentRefKey: RefKey = "chaga";
 let latestFanData: FanData = {};
 
-function chagaScoreFromDistance(distance: number): number {
-  const h =
-    1 / (1 + Math.exp(-CHAGA_SIMILARITY_C * (distance - CHAGA_SIMILARITY_D)));
-  const scoreRaw = Math.sqrt(h) * 100 + CHAGA_SIMILARITY_A;
-  return Math.max(0, Math.min(100, scoreRaw));
-}
-
 function renderZumgze(fan: FanData = {}): void {
   latestFanData = fan || {};
   const currentRef = REF_MAPS[currentRefKey].values;
-  const total = (fan.c0 || 0) + (fan.d0 || 0);
-  let zumgze = 0;
 
-  const rows = FAN_ITEMS.map(({ idx, name }) => {
-    const count = (fan[`c${idx}`] || 0) + (fan[`d${idx}`] || 0);
-    const playerPct = total ? (count / total) * 100 : 0;
-    const refPct = currentRef[name] ?? 0;
-    const diff = playerPct - refPct;
-    zumgze += Math.abs(diff);
-    return { name, playerPct, refPct, diff };
-  });
+  const { rows, zumgze, chagaSimilarity, chagaScoreLower, chagaScoreUpper } =
+    computeZumgzeStats(fan, currentRef);
 
-  const dProb = rows.reduce(
-    (sum, row) => sum + Math.abs(row.playerPct / 100 - row.refPct / 100),
-    0,
-  );
-  const varD = rows.reduce(
-    (sum, row) =>
-      sum +
-      ((row.playerPct / 100) * (1 - row.playerPct / 100)) /
-        CHAGA_REF_SAMPLE_SIZE +
-      ((row.refPct / 100) * (1 - row.refPct / 100)) / Math.max(total, 1),
-    0,
-  );
-  const seProb = Math.sqrt(Math.max(0, varD));
-  const ciLowerProb = Math.max(0, dProb - CHAGA_CI_Z95 * seProb);
-  const ciUpperProb = dProb + CHAGA_CI_Z95 * seProb;
-
-  const chagaSimilarity = chagaScoreFromDistance(zumgze);
-  const chagaScoreLower = chagaScoreFromDistance(ciLowerProb * 100);
-  const chagaScoreUpper = chagaScoreFromDistance(ciUpperProb * 100);
-
-  rows.sort((a, b) => {
+  const sortedRows = [...rows].sort((a: ZumgzeRow, b: ZumgzeRow) => {
     const aPositive = a.diff >= 0;
     const bPositive = b.diff >= 0;
     if (aPositive !== bPositive) {
@@ -65,8 +23,11 @@ function renderZumgze(fan: FanData = {}): void {
     return b.diff - a.diff;
   });
 
-  const maxAbsDiff = Math.max(...rows.map((item) => Math.abs(item.diff)), 1e-9);
-  const rowsHtml = rows
+  const maxAbsDiff = Math.max(
+    ...sortedRows.map((item) => Math.abs(item.diff)),
+    1e-9,
+  );
+  const rowsHtml = sortedRows
     .map((item) => {
       const widthPercent = (Math.abs(item.diff) / maxAbsDiff) * 50;
       const isPositive = item.diff >= 0;
