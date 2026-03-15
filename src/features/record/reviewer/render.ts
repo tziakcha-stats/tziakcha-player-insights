@@ -1,13 +1,13 @@
-import { w } from "../../shared/env";
-import { infoLog, warnLog } from "../../shared/logger";
+import { w } from "../../../shared/env";
+import { infoLog, warnLog } from "../../../shared/logger";
 import {
   clearReviewError,
   getFilledReviews,
   getReviews,
   getReviewSeats,
   getTZInstance,
-} from "./reviewer-state";
-import { Candidate, ReviewerRenderOptions } from "./reviewer-types";
+} from "./state";
+import { Candidate, ReviewerRenderOptions } from "./types";
 
 export interface ReviewerRenderRuntime {
   wind: string[];

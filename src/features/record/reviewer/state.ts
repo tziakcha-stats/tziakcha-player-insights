@@ -1,5 +1,5 @@
-import { w } from "../../shared/env";
-import { ReviewResponseItem, TZLikeInstance } from "./reviewer-types";
+import { w } from "../../../shared/env";
+import { ReviewResponseItem, TZLikeInstance } from "./types";
 
 export function ensureReviewStores(): void {
   if (!w.__reviews) {
