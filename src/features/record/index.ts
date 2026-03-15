@@ -1,8 +1,8 @@
 import { infoLog } from "../../shared/logger";
 import { w } from "../../shared/env";
 import { installRecordJsonParseGuard } from "./guards";
-import { initReviewer } from "./reviewer-init";
-import { setReviewError } from "./reviewer-state";
+import { initReviewer } from "./reviewer/init";
+import { setReviewError } from "./reviewer/state";
 import { interceptTZ } from "./tz-interceptor";
 
 let startedRecordHref = "";

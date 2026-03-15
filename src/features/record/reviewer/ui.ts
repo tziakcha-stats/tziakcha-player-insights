@@ -1,11 +1,11 @@
-import { w } from "../../shared/env";
-import { infoLog } from "../../shared/logger";
-import "./reviewer-ui.less";
+import { w } from "../../../shared/env";
+import { infoLog } from "../../../shared/logger";
+import "./ui.less";
 import {
   ReviewerRenderRuntime,
   showCandidates,
   startStepWatcher,
-} from "./reviewer-render";
+} from "./render";
 
 function toggleUserInfo(hide: boolean): void {
   const nameElements = document.querySelectorAll(".name");

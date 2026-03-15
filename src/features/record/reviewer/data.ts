@@ -1,16 +1,12 @@
-import { infoLog, warnLog } from "../../shared/logger";
+import { infoLog, warnLog } from "../../../shared/logger";
 import {
   getFilledReviews,
   getReviews,
   getReviewSeats,
   setReviewError,
-} from "./reviewer-state";
-import {
-  parseRound,
-  ReviewerRenderRuntime,
-  showCandidates,
-} from "./reviewer-render";
-import { ReviewApiError, ReviewResponseItem } from "./reviewer-types";
+} from "./state";
+import { parseRound, ReviewerRenderRuntime, showCandidates } from "./render";
+import { ReviewApiError, ReviewResponseItem } from "./types";
 
 export function fillEmptyValues(): void {
   const reviews = getReviews();

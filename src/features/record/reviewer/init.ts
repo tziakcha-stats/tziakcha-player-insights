@@ -1,15 +1,15 @@
-import { w } from "../../shared/env";
-import { infoLog } from "../../shared/logger";
-import { createReviewerUI } from "./reviewer-ui";
-import { loadReviewData } from "./reviewer-data";
-import { ReviewerRenderRuntime } from "./reviewer-render";
+import { w } from "../../../shared/env";
+import { infoLog } from "../../../shared/logger";
+import { createReviewerUI } from "./ui";
+import { loadReviewData } from "./data";
+import { ReviewerRenderRuntime } from "./render";
 import {
   ensureReviewStores,
   getTZInstance,
   setReviewError,
   clearReviewError,
-} from "./reviewer-state";
-import { tryForceCreateTZ } from "./tz-interceptor";
+} from "./state";
+import { tryForceCreateTZ } from "../tz-interceptor";
 
 export function initReviewer(): void {
   const hasWind = Array.isArray(w.WIND);

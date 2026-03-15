@@ -4,7 +4,7 @@ import {
   clearReviewError,
   setReviewError,
   setTZInstance,
-} from "./reviewer-state";
+} from "./reviewer/state";
 
 const originalDefineProperty = Object.defineProperty;
 const originalReflectDefineProperty = Reflect.defineProperty;
