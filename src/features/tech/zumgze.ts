@@ -1,5 +1,6 @@
 import { w } from "../../shared/env";
 import { warnLog } from "../../shared/logger";
+import "./zumgze.less";
 import { FAN_ITEMS, REF_MAPS, RefKey } from "./refs";
 
 type FanData = Record<string, number>;
@@ -12,31 +13,6 @@ const CHAGA_REF_SAMPLE_SIZE = 3416686;
 
 let currentRefKey: RefKey = "chaga";
 let latestFanData: FanData = {};
-
-function ensureStyle(): void {
-  const styleId = "reviewer-zumgze-style";
-  if (document.getElementById(styleId)) {
-    return;
-  }
-  const style = document.createElement("style");
-  style.id = styleId;
-  style.textContent = `
-    #reviewer-zumgze-wrap .zumgze-summary { font-weight: 600; }
-    #reviewer-zumgze-wrap .zumgze-similarity { margin-top: 0.2em; }
-    #reviewer-zumgze-wrap .zumgze-score-trigger { cursor: help; text-decoration: underline dotted; text-underline-offset: 2px; }
-    #reviewer-zumgze-wrap .zumgze-score-help, #reviewer-zumgze-wrap .zumgze-score-ci { margin-top: 0.15em; font-size: 12px; color: #6c757d; }
-    #reviewer-zumgze-wrap .zumgze-col-name { width: 7em; }
-    #reviewer-zumgze-wrap .zumgze-col-player, #reviewer-zumgze-wrap .zumgze-col-ref { width: 6em; }
-    #reviewer-zumgze-wrap .zumgze-bar-wrap { position: relative; width: 100%; height: 20px; border-radius: 3px; background: #f8f9fa; overflow: hidden; }
-    #reviewer-zumgze-wrap .zumgze-bar-zero { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: #6c757d; opacity: 0.6; z-index: 1; }
-    #reviewer-zumgze-wrap .zumgze-bar-fill { position: absolute; top: 2px; bottom: 2px; border-radius: 2px; z-index: 2; }
-    #reviewer-zumgze-wrap .zumgze-bar-label { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 12px; font-weight: 600; z-index: 3; }
-    #reviewer-zumgze-wrap .zumgze-bar-label-left { right: auto; left: 6px; }
-    #reviewer-zumgze-wrap .zumgze-ref-toolbar { display: flex; align-items: center; justify-content: flex-start; gap: 0.5em; margin-bottom: 0.35em; }
-    #reviewer-zumgze-wrap .zumgze-ref-toggle, #reviewer-zumgze-wrap .zumgze-table-toggle { font-size: 12px; line-height: 1.2; padding: 0.2em 0.65em; }
-  `;
-  document.head.appendChild(style);
-}
 
 function chagaScoreFromDistance(distance: number): number {
   const h =
@@ -214,7 +190,6 @@ export function initTechZumgze(): void {
     return;
   }
 
-  ensureStyle();
   fetch(`/_qry/user/tech/${w.location.search}`, {
     method: "POST",
     credentials: "include",

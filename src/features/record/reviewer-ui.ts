@@ -1,58 +1,11 @@
 import { w } from "../../shared/env";
 import { infoLog } from "../../shared/logger";
+import "./reviewer-ui.less";
 import {
   ReviewerRenderRuntime,
   showCandidates,
   startStepWatcher,
 } from "./reviewer-render";
-
-function installStyle(): void {
-  const styleId = "reviewer-record-style";
-  if (document.getElementById(styleId)) {
-    return;
-  }
-
-  const style = document.createElement("style");
-  style.id = styleId;
-  style.textContent = `
-    .highlight-first-tile {
-      box-shadow: 0 0 0 3px red, inset 0 0 0 3px red !important;
-    }
-    .tile-weight-bar {
-      position: absolute;
-      bottom: 100%;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 10px;
-      height: 0;
-      max-height: 50px;
-      background: #ff4444;
-      transition: height 0.3s ease;
-      z-index: 10;
-      pointer-events: none;
-    }
-    .review-container {
-      position: relative;
-      min-height: 128px;
-    }
-    .review-bg-image {
-      position: absolute;
-      top: 0;
-      right: 0;
-      width: 128px;
-      height: 128px;
-      opacity: 0.50;
-      z-index: 0;
-      pointer-events: none;
-    }
-    #review {
-      position: relative;
-      z-index: 1;
-      padding-right: 10px;
-    }
-  `;
-  document.head.appendChild(style);
-}
 
 function toggleUserInfo(hide: boolean): void {
   const nameElements = document.querySelectorAll(".name");
@@ -116,7 +69,6 @@ export function createReviewerUI(runtime: ReviewerRenderRuntime): void {
     return;
   }
 
-  installStyle();
   let hideUserInfo = false;
 
   const ctrlRtDiv = document.createElement("div");
