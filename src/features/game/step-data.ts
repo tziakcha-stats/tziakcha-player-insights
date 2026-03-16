@@ -8,6 +8,11 @@ export type StepPlayer = {
 export type StepData = {
   p?: StepPlayer[];
   a?: Array<[number, number]>;
+  b?: number;
+  y?: Array<{
+    f?: number;
+    t?: Record<string, number>;
+  }>;
 };
 
 /**
