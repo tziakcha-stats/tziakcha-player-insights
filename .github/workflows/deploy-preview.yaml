@@ -28,7 +28,8 @@ permissions:
   contents: write
 
 jobs:
-  preview:
+  build:
+    name: Build userscript
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -42,8 +43,32 @@ jobs:
       - run: npm ci
       - run: npm run build
 
-      - name: Publish preview-dist branch
-        if: github.event_name != 'pull_request'
+      - name: Validate userscript build output
+        run: test -f dist/index.prod.user.js
+
+      - name: Upload preview userscript
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-userscript-${{ github.sha }}
+          path: ./dist/index.prod.user.js
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-preview-branch:
+    name: Publish preview-dist branch
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download userscript artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: preview-userscript-${{ github.sha }}
+          path: ./preview-asset
+
+      - name: Publish userscript files
         env:
           PREVIEW_BRANCH: preview-dist
         run: |
@@ -63,30 +88,25 @@ jobs:
             (
               cd "$PREVIEW_WORKTREE"
               git checkout --orphan "$PREVIEW_BRANCH"
-              git rm -rf . >/dev/null 2>&1 || true
             )
           fi
 
-          rsync -a --delete --exclude ".git" dist/ "$PREVIEW_WORKTREE/"
+          find "$PREVIEW_WORKTREE" -mindepth 1 -maxdepth 1 ! -name ".git" -exec rm -rf {} +
+
+          mkdir -p "$PREVIEW_WORKTREE/greasyfork"
+          cp ./preview-asset/index.prod.user.js "$PREVIEW_WORKTREE/index.prod.user.js"
+          cp ./preview-asset/index.prod.user.js "$PREVIEW_WORKTREE/greasyfork/script.user.js"
           touch "$PREVIEW_WORKTREE/.nojekyll"
 
           (
             cd "$PREVIEW_WORKTREE"
             if [ -n "$(git status --porcelain)" ]; then
               git add -A
-              git commit -m "chore(preview): update dist for $GITHUB_SHA"
+              git commit -m "chore(preview): update userscript for $GITHUB_SHA"
               git push origin HEAD:"$PREVIEW_BRANCH"
             else
-              echo "No changes in preview dist; skip push."
+              echo "No userscript changes; skip push."
             fi
           )
 
           git worktree remove "$PREVIEW_WORKTREE" --force
-
-      - name: Upload preview dist
-        uses: actions/upload-artifact@v4
-        with:
-          name: preview-dist-${{ github.sha }}
-          path: ./dist
-          if-no-files-found: error
-          retention-days: 7
