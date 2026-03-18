@@ -55,7 +55,7 @@ jobs:
 
       - name: Create HTML from README
         run: |
-          mkdir -p _site
+          mkdir -p _site _site/preview
 
           README_SOURCE="readme.md"
           if [ ! -f "$README_SOURCE" ]; then
@@ -113,6 +113,7 @@ jobs:
             cp -r docs _site/
           fi
           cp dist/index.prod.user.js _site/index.prod.user.js
+            cp dist/index.prod.user.js _site/preview/index.prod.user.js
           touch _site/.nojekyll
 
       - name: Upload artifact
