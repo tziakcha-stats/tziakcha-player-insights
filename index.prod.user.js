@@ -1,22 +1,24 @@
 // ==UserScript==
-// @name          tziakcha-player-insights
-// @name:cn       雀渣用户高级分析工具
-// @name:en       Tziakcha Player Insights
-// @icon          https://cdn.jsdelivr.net/gh/Choimoe/chaga-reviewer-script/doc/img/icon.png
-// @namespace     https://greasyfork.org/users/1543716
-// @version       2.0.0
-// @author        Choimoe <qwqshq@gmail.com>
-// @source        https://github.com/tziakcha-stats/tziakcha-player-insights
-// @license       MIT
-// @description   适用于雀渣平台的个人信息分析工具
-// @match         *://tziakcha.net/*
-// @match         *://tziakcha.net/record/*
-// @match         *://tziakcha.net/user/tech/*
-// @match         *://tziakcha.net/history/*
-// @grant         GM.xmlHttpRequest
-// @grant         unsafeWindow
-// @connect       httpbin.org
-// @run-at        document-start
+// @name             tziakcha-player-insights
+// @name:cn          雀渣用户高级分析工具
+// @name:en          Tziakcha Player Insights
+// @icon             https://cdn.jsdelivr.net/gh/Choimoe/chaga-reviewer-script/doc/img/icon.png
+// @namespace        https://greasyfork.org/users/1543716
+// @version          2.0.0
+// @author           Choimoe <qwqshq@gmail.com>
+// @source           https://github.com/tziakcha-stats/tziakcha-player-insights
+// @license          MIT
+// @description      适用于雀渣平台的个人信息分析工具
+// @description:en   适用于雀渣平台的个人信息分析工具
+// @match            *://tziakcha.net/*
+// @match            *://tziakcha.net/record/*
+// @match            *://tziakcha.net/user/tech/*
+// @match            *://tziakcha.net/history/*
+// @match            *://tc-api.pesiu.org/review/*
+// @grant            GM.xmlHttpRequest
+// @grant            unsafeWindow
+// @connect          httpbin.org
+// @run-at           document-start
 // ==/UserScript==
 
 /******/ (() => { // webpackBootstrap
@@ -821,6 +823,974 @@ function logCurrentCookie() {
     }
 }
 
+;// ./src/shared/session-data.ts
+function asNumber(value) {
+    if (typeof value === "number" && Number.isFinite(value)) {
+        return value;
+    }
+    if (typeof value === "string") {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+}
+function extractSessionPlayers(raw) {
+    if (!Array.isArray(raw.players)) {
+        return [];
+    }
+    return raw.players.map((item) => {
+        const player = item;
+        return {
+            name: player.n || player.name || "",
+            id: player.i || player.id,
+        };
+    });
+}
+function extractSessionRecords(raw) {
+    if (!Array.isArray(raw.records)) {
+        return [];
+    }
+    return raw.records
+        .map((item) => {
+        const record = item;
+        const id = record.id || record.i;
+        return id ? { id } : null;
+    })
+        .filter((item) => Boolean(item));
+}
+function isSessionFinished(raw) {
+    if (raw.finished === true || raw.isFinished === true) {
+        return true;
+    }
+    const finishTime = asNumber(raw.finish_time ?? raw.finishTime);
+    if (finishTime !== null && finishTime > 0) {
+        return true;
+    }
+    const progress = asNumber(raw.progress);
+    const periods = asNumber(raw.periods);
+    if (progress !== null && periods !== null && periods > 0) {
+        return progress >= periods - 1;
+    }
+    return false;
+}
+async function fetchSessionData(sessionId) {
+    const response = await fetch(`/_qry/game/?id=${encodeURIComponent(sessionId)}`, {
+        method: "POST",
+        credentials: "include",
+    });
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status} for /_qry/game/`);
+    }
+    const raw = (await response.json());
+    return {
+        players: extractSessionPlayers(raw),
+        records: extractSessionRecords(raw),
+        isFinished: isSessionFinished(raw),
+    };
+}
+
+;// ./src/features/game/chaga-score.ts
+function bz2tc(tileCode) {
+    if (!tileCode || tileCode.length < 2) {
+        return -1;
+    }
+    const tileType = tileCode[0];
+    const number = Number.parseInt(tileCode.slice(1), 10) - 1;
+    if (Number.isNaN(number)) {
+        return -1;
+    }
+    if (tileType === "W")
+        return number;
+    if (tileType === "T")
+        return number + 9;
+    if (tileType === "B")
+        return number + 18;
+    if (tileType === "F")
+        return number + 27;
+    if (tileType === "J")
+        return number + 31;
+    if (tileType === "H")
+        return number + 34;
+    return -1;
+}
+function normalizeAiAction(actionText) {
+    const trimmed = actionText.trim();
+    if (!trimmed) {
+        return null;
+    }
+    if (trimmed.startsWith("Play ")) {
+        const tileIndex = bz2tc(trimmed.split(/\s+/).at(-1) || "");
+        return ["play", tileIndex >= 0 ? tileIndex : null];
+    }
+    if (trimmed.startsWith("Chi"))
+        return ["chi", null];
+    if (trimmed.startsWith("Peng"))
+        return ["peng", null];
+    if (trimmed.startsWith("Gang") || trimmed.startsWith("BuGang"))
+        return ["gang", null];
+    if (trimmed.startsWith("Hu"))
+        return ["hu", null];
+    if (trimmed.startsWith("Pass"))
+        return ["pass", null];
+    if (trimmed.startsWith("Abandon"))
+        return ["abandon", null];
+    return null;
+}
+function choiceMatchesAi(choice, row) {
+    if (!row) {
+        return true;
+    }
+    const candidates = row.extra?.candidates;
+    if (!Array.isArray(candidates) || !candidates.length) {
+        return true;
+    }
+    const top = candidates[0];
+    if (!Array.isArray(top) || typeof top[1] !== "string") {
+        return true;
+    }
+    const normalized = normalizeAiAction(top[1]);
+    if (!normalized) {
+        return true;
+    }
+    const [kind, value] = normalized;
+    if (kind !== choice.kind) {
+        return false;
+    }
+    if (kind === "play" && value !== choice.value) {
+        return false;
+    }
+    return true;
+}
+function calcChagaScore(choice, row) {
+    if (!row) {
+        return 100;
+    }
+    const candidates = row.extra?.candidates;
+    if (!Array.isArray(candidates) || !candidates.length) {
+        return 100;
+    }
+    const parsed = [];
+    candidates.forEach((item) => {
+        if (!Array.isArray(item) || item.length < 2) {
+            return;
+        }
+        const [weightRaw, actionRaw] = item;
+        if (typeof weightRaw !== "number" || typeof actionRaw !== "string") {
+            return;
+        }
+        const normalized = normalizeAiAction(actionRaw);
+        if (!normalized) {
+            return;
+        }
+        parsed.push({ weight: weightRaw, normalized });
+    });
+    if (!parsed.length) {
+        return 100;
+    }
+    const topWeight = parsed[0].weight;
+    let matchedWeight = null;
+    parsed.forEach(({ weight, normalized }) => {
+        const [kind, value] = normalized;
+        if (kind !== choice.kind) {
+            return;
+        }
+        if (kind === "play" && value !== choice.value) {
+            return;
+        }
+        if (matchedWeight === null || weight > matchedWeight) {
+            matchedWeight = weight;
+        }
+    });
+    if (matchedWeight === null) {
+        return 0;
+    }
+    return Math.exp(matchedWeight - topWeight) * 100;
+}
+
+;// ./src/shared/chaga-review.ts
+function normalizeRows(payload) {
+    return Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload.data)
+            ? payload
+                .data
+            : [];
+}
+function getApiErrorMessage(payload) {
+    if (typeof payload !== "object" ||
+        payload === null ||
+        Array.isArray(payload)) {
+        return undefined;
+    }
+    const codeValue = payload.code;
+    if (codeValue === undefined || codeValue === null) {
+        return undefined;
+    }
+    const numericCode = Number(codeValue);
+    if (!Number.isFinite(numericCode) || numericCode === 0) {
+        return undefined;
+    }
+    return payload.message || "未知错误";
+}
+/**
+ * 读取 CHAGA 评测接口，并统一解析返回结果。
+ */
+async function fetchChagaReviewData(sessionId, seat) {
+    const response = await fetch(`https://tc-api.pesiu.org/review/?id=${encodeURIComponent(sessionId)}&seat=${seat}`, { credentials: "omit" });
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status} for CHAGA API`);
+    }
+    const payload = (await response.json());
+    const errorMessage = getApiErrorMessage(payload);
+    return {
+        rows: normalizeRows(payload),
+        errorMessage,
+    };
+}
+
+;// ./src/features/game/chaga-data.ts
+
+/**
+ * 负责读取 CHAGA 评测数据
+ */
+async function fetchAiResponse(sessionId, seat) {
+    const result = await fetchChagaReviewData(sessionId, seat);
+    return result.rows;
+}
+
+;// ./src/features/game/win-info.ts
+const FAN_NAMES = [
+    "无",
+    "大四喜",
+    "大三元",
+    "绿一色",
+    "九莲宝灯",
+    "四杠",
+    "连七对",
+    "十三幺",
+    "清幺九",
+    "小四喜",
+    "小三元",
+    "字一色",
+    "四暗刻",
+    "一色双龙会",
+    "一色四同顺",
+    "一色四节高",
+    "一色四步高",
+    "一色四连环",
+    "三杠",
+    "混幺九",
+    "七对",
+    "七星不靠",
+    "全双刻",
+    "清一色",
+    "一色三同顺",
+    "一色三节高",
+    "全大",
+    "全中",
+    "全小",
+    "清龙",
+    "三色双龙会",
+    "一色三步高",
+    "一色三连环",
+    "全带五",
+    "三同刻",
+    "三暗刻",
+    "全不靠",
+    "组合龙",
+    "大于五",
+    "小于五",
+    "三风刻",
+    "花龙",
+    "推不倒",
+    "三色三同顺",
+    "三色三节高",
+    "无番和",
+    "妙手回春",
+    "海底捞月",
+    "杠上开花",
+    "抢杠和",
+    "碰碰和",
+    "混一色",
+    "三色三步高",
+    "五门齐",
+    "全求人",
+    "双暗杠",
+    "双箭刻",
+    "全带幺",
+    "不求人",
+    "双明杠",
+    "和绝张",
+    "箭刻",
+    "圈风刻",
+    "门风刻",
+    "门前清",
+    "平和",
+    "四归一",
+    "双同刻",
+    "双暗刻",
+    "暗杠",
+    "断幺",
+    "一般高",
+    "喜相逢",
+    "连六",
+    "老少副",
+    "幺九刻",
+    "明杠",
+    "缺一门",
+    "无字",
+    "独听・边张",
+    "独听・嵌张",
+    "独听・单钓",
+    "自摸",
+    "花牌",
+    "明暗杠",
+    "※ 天和",
+    "※ 地和",
+    "※ 人和Ⅰ",
+    "※ 人和Ⅱ",
+];
+function toNumber(value) {
+    if (typeof value === "number" && Number.isFinite(value)) {
+        return value;
+    }
+    if (typeof value === "string") {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+}
+function parseWinFanItems(rawT) {
+    if (!rawT || typeof rawT !== "object") {
+        return [];
+    }
+    return Object.entries(rawT)
+        .map(([fanIndexRaw, encodedRaw]) => {
+        const fanIndex = toNumber(fanIndexRaw);
+        const encoded = toNumber(encodedRaw);
+        if (fanIndex === null || encoded === null) {
+            return null;
+        }
+        const fanIndexInt = Math.floor(fanIndex);
+        const encodedInt = Math.floor(encoded);
+        const unitFan = encodedInt & 0xff;
+        const count = (encodedInt >> 8) + 1;
+        const fanName = FAN_NAMES[fanIndexInt] || `番种${fanIndexInt}`;
+        return {
+            fanIndex: fanIndexInt,
+            fanName,
+            count,
+            unitFan,
+            totalFan: unitFan * count,
+        };
+    })
+        .filter((item) => Boolean(item))
+        .sort((left, right) => left.fanIndex - right.fanIndex);
+}
+
+;// ./src/features/game/step-simulator.ts
+const CHOICE_ACTION_TYPES = new Set([2, 3, 4, 5, 6, 8, 9]);
+function actionToChoice(actionIndex, combined, data) {
+    const seat = (combined >> 4) & 3;
+    const actionType = combined & 15;
+    if (!CHOICE_ACTION_TYPES.has(actionType)) {
+        return null;
+    }
+    if (actionType === 2) {
+        const tileId = data & 0xff;
+        return { seat, actionIndex, kind: "play", value: Math.floor(tileId / 4) };
+    }
+    if (actionType === 3) {
+        return { seat, actionIndex, kind: "chi", value: null };
+    }
+    if (actionType === 4) {
+        return { seat, actionIndex, kind: "peng", value: null };
+    }
+    if (actionType === 5) {
+        return { seat, actionIndex, kind: "gang", value: null };
+    }
+    if (actionType === 6) {
+        const isAutoHu = Boolean(data & 1);
+        return isAutoHu ? null : { seat, actionIndex, kind: "hu", value: null };
+    }
+    if (actionType === 8) {
+        const passMode = data & 3;
+        return passMode !== 0
+            ? null
+            : { seat, actionIndex, kind: "pass", value: null };
+    }
+    if (actionType === 9) {
+        return { seat, actionIndex, kind: "abandon", value: null };
+    }
+    return null;
+}
+/**
+ * 将牌谱动作流解析为逐步可比对的选择序列
+ */
+function extractChoices(stepData) {
+    if (!Array.isArray(stepData.a)) {
+        return [];
+    }
+    const result = [];
+    stepData.a.forEach((action, actionIndex) => {
+        if (!Array.isArray(action) || action.length < 2) {
+            return;
+        }
+        const [combined, data] = action;
+        if (typeof combined !== "number" || typeof data !== "number") {
+            return;
+        }
+        const choice = actionToChoice(actionIndex, combined, data);
+        if (choice) {
+            result.push(choice);
+        }
+    });
+    return result;
+}
+
+;// ./src/features/game/step-data.ts
+
+/**
+ * base64 字符串转 Uint8Array
+ */
+function base64ToBytes(input) {
+    const binary = atob(input);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {
+        bytes[index] = binary.charCodeAt(index);
+    }
+    return bytes;
+}
+/**
+ * 解压 zlib+base64 编码的字符串
+ */
+async function decompressZlibBase64(input) {
+    const streamCtor = w.DecompressionStream;
+    if (!streamCtor) {
+        throw new Error("当前浏览器不支持 DecompressionStream");
+    }
+    const bytes = base64ToBytes(input);
+    const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    const source = new Blob([buffer]).stream();
+    const decompressed = source.pipeThrough(new streamCtor("deflate"));
+    return await new Response(decompressed).text();
+}
+/**
+ * 读取单局牌谱数据
+ */
+async function fetchStepData(recordId) {
+    const response = await fetch("/_qry/record/", {
+        method: "POST",
+        headers: {
+            "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+        },
+        body: new URLSearchParams({ id: recordId }).toString(),
+    });
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status} for /_qry/record/`);
+    }
+    const raw = await response.json();
+    if (!raw.script) {
+        throw new Error(`record ${recordId} 缺少 script`);
+    }
+    const jsonText = await decompressZlibBase64(raw.script);
+    return JSON.parse(jsonText);
+}
+
+;// ./src/features/game/game-constants.ts
+const FIXED_RI_OFFSET = -1;
+const SESSION_NOT_FINISHED_ERROR = "SESSION_NOT_FINISHED";
+const UI_RETRY_MAX_COUNT = 20;
+const UI_RETRY_INTERVAL_MS = 200;
+const S2O = [
+    [0, 1, 2, 3],
+    [1, 2, 3, 0],
+    [2, 3, 0, 1],
+    [3, 0, 1, 2],
+    [1, 0, 3, 2],
+    [0, 3, 2, 1],
+    [3, 2, 1, 0],
+    [2, 1, 0, 3],
+    [2, 3, 1, 0],
+    [3, 1, 0, 2],
+    [1, 0, 2, 3],
+    [0, 2, 3, 1],
+    [3, 2, 0, 1],
+    [2, 0, 1, 3],
+    [0, 1, 3, 2],
+    [1, 3, 2, 0],
+];
+
+;// ./src/features/game/data-metrics.ts
+
+
+
+
+
+
+
+function buildResponseMap(responseRows, roundIndex) {
+    const responseMap = new Map();
+    responseRows.forEach((row) => {
+        if (row.rr !== roundIndex || typeof row.ri !== "number") {
+            return;
+        }
+        if (!responseMap.has(row.ri)) {
+            responseMap.set(row.ri, row);
+        }
+    });
+    return responseMap;
+}
+function getSeatToPlayerOrder(roundNo) {
+    if (!S2O.length) {
+        return [0, 1, 2, 3];
+    }
+    return (S2O[((roundNo % S2O.length) + S2O.length) % S2O.length] || [0, 1, 2, 3]);
+}
+async function prepareSessionData(sessionId) {
+    const sessionData = await fetchSessionData(sessionId);
+    if (!sessionData.isFinished) {
+        throw new Error(SESSION_NOT_FINISHED_ERROR);
+    }
+    const sessionPlayerNames = sessionData.players.map((player, index) => player.name || `Seat ${index}`);
+    const steps = await Promise.all(sessionData.records.map((record) => fetchStepData(record.id)));
+    return { sessionPlayerNames, steps };
+}
+function computeRoundOutcomes(sessionPlayerNames, steps, playerMetrics) {
+    const rounds = [];
+    steps.forEach((stepData, roundNo) => {
+        const seatToPlayerOrder = getSeatToPlayerOrder(roundNo);
+        const resultBits = typeof stepData.b === "number" ? stepData.b : 0;
+        const winnerMask = resultBits & 0x0f;
+        const discarderMask = (resultBits >> 4) & 0x0f;
+        if (!winnerMask) {
+            return;
+        }
+        const winnerDetails = [];
+        for (let stepSeat = 0; stepSeat < 4; stepSeat += 1) {
+            if (((winnerMask >> stepSeat) & 1) === 0) {
+                continue;
+            }
+            const aiSeat = seatToPlayerOrder[stepSeat] ?? -1;
+            if (aiSeat < 0) {
+                continue;
+            }
+            const seatY = Array.isArray(stepData.y) ? stepData.y[stepSeat] : null;
+            const fanItems = parseWinFanItems(seatY?.t);
+            const totalFan = typeof seatY?.f === "number"
+                ? seatY.f
+                : fanItems.reduce((sum, item) => sum + item.totalFan, 0);
+            if (playerMetrics && playerMetrics[aiSeat]) {
+                playerMetrics[aiSeat].winRounds.push({
+                    roundNo: roundNo + 1,
+                    totalFan,
+                    fanItems,
+                });
+            }
+            winnerDetails.push({
+                playerName: sessionPlayerNames[aiSeat] || `Seat ${aiSeat}`,
+                totalFan,
+                fanItems,
+            });
+        }
+        const discarderNames = [];
+        for (let stepSeat = 0; stepSeat < 4; stepSeat += 1) {
+            if (((discarderMask >> stepSeat) & 1) === 0) {
+                continue;
+            }
+            const aiSeat = seatToPlayerOrder[stepSeat] ?? -1;
+            if (aiSeat < 0) {
+                continue;
+            }
+            discarderNames.push(sessionPlayerNames[aiSeat] || `Seat ${aiSeat}`);
+        }
+        rounds.push({
+            roundNo: roundNo + 1,
+            winners: winnerDetails,
+            discarderNames,
+            selfDraw: discarderNames.length === 0 ||
+                discarderNames.every((name) => winnerDetails.some((winner) => winner.playerName === name)),
+        });
+    });
+    return rounds;
+}
+async function computeMetrics(sessionId) {
+    const prepared = await prepareSessionData(sessionId);
+    const { sessionPlayerNames, steps } = prepared;
+    const playerMetrics = sessionPlayerNames.map((playerName) => ({
+        playerName,
+        matched: 0,
+        total: 0,
+        ratio: 0,
+        chagaSum: 0,
+        chagaCount: 0,
+        chagaAvg: 0,
+        winRounds: [],
+    }));
+    const rounds = computeRoundOutcomes(sessionPlayerNames, steps, playerMetrics);
+    const aiResponses = await Promise.all([0, 1, 2, 3].map((seat) => fetchAiResponse(sessionId, seat)));
+    steps.forEach((stepData, roundNo) => {
+        const seatToPlayerOrder = getSeatToPlayerOrder(roundNo);
+        const aiToRoundSeat = [0, 1, 2, 3].map((playerOrder) => seatToPlayerOrder.findIndex((seatPlayerOrder) => seatPlayerOrder === playerOrder));
+        const allChoices = extractChoices(stepData);
+        for (let aiSeat = 0; aiSeat < 4; aiSeat += 1) {
+            const stepSeat = aiToRoundSeat[aiSeat];
+            if (stepSeat < 0) {
+                continue;
+            }
+            const responseMap = buildResponseMap(aiResponses[aiSeat] || [], roundNo);
+            const seatChoices = allChoices.filter((choice) => choice.seat === stepSeat);
+            seatChoices.forEach((choice) => {
+                const ri = choice.actionIndex + FIXED_RI_OFFSET;
+                const row = responseMap.get(ri);
+                const matched = choiceMatchesAi(choice, row);
+                const chagaScore = calcChagaScore(choice, row);
+                const metric = playerMetrics[aiSeat];
+                metric.total += 1;
+                if (matched) {
+                    metric.matched += 1;
+                }
+                metric.chagaSum += chagaScore;
+                metric.chagaCount += 1;
+            });
+        }
+    });
+    playerMetrics.forEach((metric) => {
+        metric.ratio = metric.total ? metric.matched / metric.total : 0;
+        metric.chagaAvg = metric.chagaCount
+            ? metric.chagaSum / metric.chagaCount
+            : 0;
+    });
+    const overallMatched = playerMetrics.reduce((sum, item) => sum + item.matched, 0);
+    const overallTotal = playerMetrics.reduce((sum, item) => sum + item.total, 0);
+    const overallChagaSum = playerMetrics.reduce((sum, item) => sum + item.chagaSum, 0);
+    const overallChagaCount = playerMetrics.reduce((sum, item) => sum + item.chagaCount, 0);
+    return {
+        players: playerMetrics,
+        rounds,
+        overall: {
+            matched: overallMatched,
+            total: overallTotal,
+            ratio: overallTotal ? overallMatched / overallTotal : 0,
+            chagaAvg: overallChagaCount ? overallChagaSum / overallChagaCount : 0,
+        },
+    };
+}
+
+;// ./src/features/game/ui-render.ts
+
+
+function findStandardScoreRow() {
+    const selectors = ["table.table tr", "table tr"];
+    for (const selector of selectors) {
+        const found = Array.from(document.querySelectorAll(selector)).find((row) => (row.querySelector("th")?.textContent || "").includes("标准分"));
+        if (found) {
+            return found;
+        }
+    }
+    return null;
+}
+function parseRoundNoFromRow(row) {
+    const cells = Array.from(row.children);
+    for (const cell of cells) {
+        const text = (cell.textContent || "").trim();
+        if (!text || !/^\d{1,3}$/.test(text)) {
+            continue;
+        }
+        const value = Number(text);
+        if (Number.isFinite(value) && value > 0 && value <= 128) {
+            return value;
+        }
+    }
+    return null;
+}
+function findRoundTable() {
+    const tables = Array.from(document.querySelectorAll("table"));
+    let best = null;
+    for (const table of tables) {
+        const rows = Array.from(table.querySelectorAll("tr"));
+        const hasRoundHeader = rows.some((row) => Array.from(row.children).some((cell) => (cell.textContent || "").trim().includes("盘序") ||
+            (cell.textContent || "").trim().includes("序")));
+        const numericRows = rows.filter((row) => parseRoundNoFromRow(row) !== null).length;
+        const score = (hasRoundHeader ? 1000 : 0) + numericRows;
+        if (!best || score > best.score) {
+            best = { table, score };
+        }
+    }
+    if (!best || best.score <= 0) {
+        return null;
+    }
+    return best.table;
+}
+function clearInsertedRows() {
+    document.getElementById("reviewer-game-ratio-row")?.remove();
+    document.getElementById("reviewer-game-chaga-row")?.remove();
+    document.getElementById("reviewer-game-pending-row")?.remove();
+    document
+        .querySelectorAll(".reviewer-game-round-toggle, .reviewer-game-round-separator, .reviewer-game-detail-row")
+        .forEach((element) => element.remove());
+}
+function withAnchorRow(callback, retryInterval = UI_RETRY_INTERVAL_MS) {
+    const anchor = findStandardScoreRow();
+    if (!anchor || !anchor.parentElement) {
+        setTimeout(() => withAnchorRow(callback, retryInterval), retryInterval);
+        return;
+    }
+    callback(anchor);
+}
+function createMetricRow(label, values, rowId) {
+    const row = document.createElement("tr");
+    row.id = rowId;
+    const header = document.createElement("th");
+    header.className = "bg-secondary text-light";
+    header.textContent = label;
+    row.appendChild(header);
+    values.forEach((value) => {
+        const cell = document.createElement("td");
+        cell.className = "bg-secondary text-light";
+        cell.colSpan = 2;
+        cell.textContent = value;
+        row.appendChild(cell);
+    });
+    return row;
+}
+function closeDetailRow(detailRow) {
+    const content = detailRow.querySelector(".reviewer-game-detail-content");
+    if (!content) {
+        detailRow.remove();
+        return;
+    }
+    content.style.maxHeight = `${content.scrollHeight}px`;
+    content.style.opacity = "1";
+    content.style.transform = "translateY(0)";
+    requestAnimationFrame(() => {
+        content.style.maxHeight = "0px";
+        content.style.opacity = "0";
+        content.style.transform = "translateY(-4px)";
+    });
+    setTimeout(() => detailRow.remove(), 220);
+}
+function createRoundDetailRow(targetRow, round) {
+    const detailRow = document.createElement("tr");
+    detailRow.className = "reviewer-game-detail-row";
+    detailRow.id = `reviewer-game-detail-row-${round.roundNo}`;
+    const cell = document.createElement("td");
+    cell.colSpan = Math.max(targetRow.children.length, 1);
+    cell.className = "bg-secondary text-light";
+    const content = document.createElement("div");
+    content.className = "reviewer-game-detail-content";
+    content.style.overflow = "hidden";
+    content.style.maxHeight = "0px";
+    content.style.opacity = "0";
+    content.style.transform = "translateY(-4px)";
+    content.style.transition =
+        "max-height 0.24s ease, opacity 0.2s ease, transform 0.2s ease";
+    content.style.padding = "4px 6px";
+    if (!round.winners.length) {
+        const empty = document.createElement("div");
+        empty.textContent = "本盘无和牌";
+        content.appendChild(empty);
+    }
+    else {
+        const winnerNames = round.winners.map((item) => item.playerName).join("、");
+        const baseInfo = document.createElement("div");
+        const losePart = round.selfDraw
+            ? "自摸"
+            : `放铳：${round.discarderNames.join("、") || "未知"}`;
+        baseInfo.textContent = `和牌：${winnerNames}；${losePart}`;
+        content.appendChild(baseInfo);
+        round.winners.forEach((winner) => {
+            const line = document.createElement("div");
+            const fanText = winner.fanItems.length
+                ? winner.fanItems
+                    .map((fan) => fan.count > 1 ? `${fan.fanName}×${fan.count}` : fan.fanName)
+                    .join("、")
+                : "番种未知";
+            line.textContent = `${winner.playerName}：${winner.totalFan}番（${fanText}）`;
+            content.appendChild(line);
+        });
+    }
+    cell.appendChild(content);
+    detailRow.appendChild(cell);
+    return detailRow;
+}
+function installRoundToggleButtons(rounds, retryCount = 0) {
+    const table = findRoundTable();
+    if (!table) {
+        if (retryCount < UI_RETRY_MAX_COUNT) {
+            setTimeout(() => installRoundToggleButtons(rounds, retryCount + 1), UI_RETRY_INTERVAL_MS);
+        }
+        return;
+    }
+    const roundMap = new Map();
+    rounds.forEach((round) => {
+        roundMap.set(round.roundNo, round);
+    });
+    const rdtrRows = Array.from(table.querySelectorAll("tr[name='rdtr']"));
+    const rows = rdtrRows.length
+        ? rdtrRows
+        : Array.from(table.querySelectorAll("tr"));
+    let installedCount = 0;
+    rows.forEach((row, rowIndex) => {
+        if (row.querySelector(".reviewer-game-round-toggle")) {
+            return;
+        }
+        const roundNo = rdtrRows.length ? rowIndex + 1 : parseRoundNoFromRow(row);
+        if (!roundNo) {
+            return;
+        }
+        const firstCell = row.children[0];
+        if (!firstCell) {
+            return;
+        }
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "reviewer-game-round-toggle";
+        button.textContent = "▸";
+        button.style.border = "1px solid rgba(255,255,255,0.35)";
+        button.style.borderRadius = "4px";
+        button.style.background = "rgba(0,0,0,0.15)";
+        button.style.cursor = "pointer";
+        button.style.padding = "0";
+        button.style.width = "18px";
+        button.style.height = "18px";
+        button.style.lineHeight = "16px";
+        button.style.marginRight = "8px";
+        button.style.color = "inherit";
+        button.style.verticalAlign = "middle";
+        button.setAttribute("aria-label", `查看第${roundNo}局和牌详情`);
+        const separator = document.createElement("span");
+        separator.className = "reviewer-game-round-separator";
+        separator.textContent = "|";
+        separator.style.opacity = "0.5";
+        separator.style.marginRight = "8px";
+        separator.style.verticalAlign = "middle";
+        button.addEventListener("click", () => {
+            const existing = document.getElementById(`reviewer-game-detail-row-${roundNo}`);
+            if (existing) {
+                closeDetailRow(existing);
+                button.textContent = "▸";
+                return;
+            }
+            const roundInfo = roundMap.get(roundNo) || {
+                roundNo,
+                winners: [],
+                discarderNames: [],
+                selfDraw: false,
+            };
+            const detailRow = createRoundDetailRow(row, roundInfo);
+            row.insertAdjacentElement("afterend", detailRow);
+            const content = detailRow.querySelector(".reviewer-game-detail-content");
+            if (content) {
+                requestAnimationFrame(() => {
+                    content.style.maxHeight = `${content.scrollHeight}px`;
+                    content.style.opacity = "1";
+                    content.style.transform = "translateY(0)";
+                });
+            }
+            button.textContent = "▾";
+        });
+        firstCell.insertBefore(separator, firstCell.firstChild);
+        firstCell.insertBefore(button, separator);
+        installedCount += 1;
+    });
+    if (installedCount === 0 && retryCount < UI_RETRY_MAX_COUNT) {
+        setTimeout(() => installRoundToggleButtons(rounds, retryCount + 1), UI_RETRY_INTERVAL_MS);
+    }
+}
+function upsertMetricsRows(metrics) {
+    withAnchorRow((anchor) => {
+        clearInsertedRows();
+        const ratioRow = createMetricRow("一致率", metrics.players.map((item) => `${(item.ratio * 100).toFixed(2)}%`), "reviewer-game-ratio-row");
+        const chagaRow = createMetricRow("CHAGA度", metrics.players.map((item) => item.chagaAvg.toFixed(2)), "reviewer-game-chaga-row");
+        anchor.insertAdjacentElement("afterend", chagaRow);
+        anchor.insertAdjacentElement("afterend", ratioRow);
+        infoLog("Game overview metrics updated", metrics.overall);
+    });
+}
+function upsertPendingRow(message) {
+    withAnchorRow((anchor) => {
+        clearInsertedRows();
+        const cells = Array.from(anchor.children).slice(1);
+        const totalColSpan = cells.reduce((sum, cell) => {
+            return sum + (cell.colSpan || 1);
+        }, 0);
+        const row = document.createElement("tr");
+        row.id = "reviewer-game-pending-row";
+        const header = document.createElement("th");
+        header.className = "bg-secondary text-light";
+        header.textContent = "AI评分";
+        row.appendChild(header);
+        const cell = document.createElement("td");
+        cell.className = "bg-secondary text-light";
+        cell.colSpan = Math.max(totalColSpan, 1);
+        cell.textContent = message;
+        row.appendChild(cell);
+        anchor.insertAdjacentElement("afterend", row);
+    });
+}
+function upsertLoadingRows(message) {
+    withAnchorRow((anchor) => {
+        clearInsertedRows();
+        const ratioRow = createMetricRow("一致率", [message, message, message, message], "reviewer-game-ratio-row");
+        const chagaRow = createMetricRow("CHAGA度", [message, message, message, message], "reviewer-game-chaga-row");
+        anchor.insertAdjacentElement("afterend", chagaRow);
+        anchor.insertAdjacentElement("afterend", ratioRow);
+    });
+}
+
+;// ./src/features/game/index.ts
+
+
+
+
+
+let startedGameHref = "";
+function getGameIdFromUrl() {
+    const url = new URL(w.location.href);
+    return url.searchParams.get("id");
+}
+function initGameFeature(href) {
+    if (startedGameHref === href) {
+        return false;
+    }
+    startedGameHref = href;
+    const sessionId = getGameIdFromUrl();
+    if (!sessionId) {
+        warnLog("Game feature init skipped: missing session id");
+        return false;
+    }
+    infoLog("Game feature init started", { sessionId });
+    upsertLoadingRows("计算中...");
+    const preparedPromise = prepareSessionData(sessionId);
+    void preparedPromise
+        .then((prepared) => {
+        const rounds = computeRoundOutcomes(prepared.sessionPlayerNames, prepared.steps);
+        installRoundToggleButtons(rounds);
+    })
+        .catch((error) => {
+        if (error?.message === SESSION_NOT_FINISHED_ERROR) {
+            upsertPendingRow("等待对局完成");
+            return;
+        }
+        warnLog("Game rounds preview failed", error);
+    });
+    void computeMetrics(sessionId)
+        .then((metrics) => {
+        upsertMetricsRows(metrics);
+        installRoundToggleButtons(metrics.rounds);
+    })
+        .catch((error) => {
+        if (error?.message === SESSION_NOT_FINISHED_ERROR) {
+            upsertPendingRow("等待对局完成");
+            return;
+        }
+        warnLog("Game overview metrics failed", error);
+        upsertLoadingRows("加载失败");
+    });
+    return true;
+}
+
 ;// ./src/features/history/visit-linker.ts
 
 function escapeHtml(text) {
@@ -1013,6 +1983,9 @@ function initUserGameFeature(href) {
 function isRecordPage() {
     return /^\/record(?:\/|$)/.test(w.location.pathname);
 }
+function isGamePage() {
+    return /^\/game(?:\/|$)/.test(w.location.pathname);
+}
 function isTechPage() {
     return /^\/user\/tech(?:\/|$)/.test(w.location.pathname);
 }
@@ -1140,7 +2113,7 @@ function getTZInstance() {
 
 
 
-function bz2tc(s) {
+function render_bz2tc(s) {
     const type = s[0];
     const num = Number.parseInt(s.slice(1), 10) - 1;
     if (type === "W")
@@ -1169,7 +2142,7 @@ function act2str(act, tileCodes) {
         if (!last) {
             return normalized;
         }
-        const tile = tc2tile(tileCodes, bz2tc(last));
+        const tile = tc2tile(tileCodes, render_bz2tc(last));
         if (!tile) {
             return normalized;
         }
@@ -1183,7 +2156,7 @@ function act2str(act, tileCodes) {
         if (!last) {
             return normalized;
         }
-        return [...components.slice(0, -1), tc2tile(tileCodes, bz2tc(last))].join(" ");
+        return [...components.slice(0, -1), tc2tile(tileCodes, render_bz2tc(last))].join(" ");
     }
     return normalized;
 }
@@ -1259,7 +2232,7 @@ function showWeightVisualization(candidates, playerIndex, options) {
             return;
         }
         const tileCode = actStr.slice(5);
-        const tileIndex = bz2tc(tileCode);
+        const tileIndex = render_bz2tc(tileCode);
         if (tileIndex >= 0 && tileIndex < 136 && !tileWeightMap.has(tileIndex)) {
             tileWeightMap.set(tileIndex, probs[idx] ?? 0);
         }
@@ -1298,7 +2271,7 @@ function highlightFirstCandidate(candidates) {
         return;
     }
     const tileCode = act.slice(5);
-    const tileIndex = bz2tc(tileCode);
+    const tileIndex = render_bz2tc(tileCode);
     if (tileIndex < 0 || tileIndex >= 136) {
         return;
     }
@@ -1562,6 +2535,8 @@ function createReviewerUI(runtime) {
 
 
 
+
+
 function fillEmptyValues() {
     const reviews = getReviews();
     const filled = getFilledReviews();
@@ -1615,50 +2590,54 @@ function loadReviewData(runtime) {
     }
     const round = parseRound(roundEl.innerHTML, runtime.wind);
     infoLog(`Loading review data for game: ${gameId}, round: ${round}`);
-    let loadedCount = 0;
-    const seats = getReviewSeats();
-    const reviews = getReviews();
-    for (let seat = 0; seat <= 3; seat += 1) {
-        if (seats[seat]) {
-            continue;
+    void fetchSessionData(gameId)
+        .then((sessionData) => {
+        if (!sessionData.isFinished) {
+            setReviewError("等待对局完成后可查看AI评分");
+            infoLog(`Review data skipped: game not finished (${gameId})`);
+            return;
         }
-        seats[seat] = 1;
-        fetch(`https://tc-api.pesiu.org/review/?id=${gameId}&seat=${seat}`)
-            .then((response) => response.json())
-            .then((result) => {
-            if (result.code) {
-                seats[seat] = 0;
-                const message = result.message || "未知错误";
-                setReviewError(`评测接口错误：seat ${seat} - ${message}`);
-                warnLog(`Error fetching review data for seat ${seat}`, message);
-                return;
+        let loadedCount = 0;
+        const seats = getReviewSeats();
+        const reviews = getReviews();
+        for (let seat = 0; seat <= 3; seat += 1) {
+            if (seats[seat]) {
+                continue;
             }
-            const rows = Array.isArray(result)
-                ? result
-                : Array.isArray(result.data)
-                    ? result
-                        .data
-                    : [];
-            rows.forEach((row) => {
-                if (row.ri) {
-                    reviews[`${row.rr}-${row.ri}`] = row;
+            seats[seat] = 1;
+            fetchChagaReviewData(gameId, seat)
+                .then(({ rows, errorMessage }) => {
+                if (errorMessage) {
+                    seats[seat] = 0;
+                    setReviewError(`评测接口错误：seat ${seat} - ${errorMessage}`);
+                    warnLog(`Error fetching review data for seat ${seat}`, errorMessage);
+                    return;
                 }
+                rows.forEach((row) => {
+                    if (row.ri) {
+                        reviews[`${row.rr}-${row.ri}`] = row;
+                    }
+                });
+                seats[seat] = 2;
+                loadedCount += 1;
+                infoLog(`Download finish for seat ${seat}`);
+                if (loadedCount === 4) {
+                    fillEmptyValues();
+                }
+                showCandidates(runtime);
+            })
+                .catch((error) => {
+                seats[seat] = 0;
+                setReviewError(`评测接口连接失败：seat ${seat}`);
+                warnLog(`Download failed for seat ${seat}`, error);
             });
-            seats[seat] = 2;
-            loadedCount += 1;
-            infoLog(`Download finish for seat ${seat}`);
-            if (loadedCount === 4) {
-                fillEmptyValues();
-            }
-            showCandidates(runtime);
-        })
-            .catch((error) => {
-            seats[seat] = 0;
-            setReviewError(`评测接口连接失败：seat ${seat}`);
-            warnLog(`Download failed for seat ${seat}`, error);
-        });
-    }
-    showCandidates(runtime);
+        }
+        showCandidates(runtime);
+    })
+        .catch((error) => {
+        setReviewError("对局状态读取失败，请稍后重试");
+        warnLog("Failed to load game session status", error);
+    });
 }
 
 ;// ./src/features/record/tz-interceptor.ts
@@ -2189,6 +3168,7 @@ function initTechFeature(href) {
 
 
 
+
 const routeState = {
     lastHref: "",
 };
@@ -2199,6 +3179,7 @@ function runOnRoute() {
     }
     routeState.lastHref = href;
     const routeFlags = {
+        game: isGamePage(),
         record: isRecordPage(),
         tech: isTechPage(),
         history: isHistoryPage(),
@@ -2210,6 +3191,12 @@ function runOnRoute() {
         routeFlags,
     });
     logCurrentCookie();
+    if (routeFlags.game) {
+        if (initGameFeature(href)) {
+            debugLog("Game route init dispatched");
+        }
+        return;
+    }
     if (routeFlags.record) {
         if (initRecordFeature(href)) {
             debugLog("Record route init dispatched");
