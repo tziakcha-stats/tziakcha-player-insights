@@ -212,7 +212,7 @@ describe("data metrics", () => {
     ]);
   });
 
-  it("throws when the session is not finished", async () => {
+  it("prepares completed rounds even when the session is not finished", async () => {
     const { prepareSessionData } =
       await import("../../src/features/game/data-metrics");
 
@@ -221,11 +221,36 @@ describe("data metrics", () => {
       records: [{ id: "round-1" }],
       isFinished: false,
     });
+    fetchStepData.mockResolvedValue({
+      b: 0x21,
+      y: [{ f: 8, t: { "50": 2 } }],
+    });
 
-    await expect(prepareSessionData("session-1")).rejects.toThrow(
+    await expect(prepareSessionData("session-1")).resolves.toMatchObject({
+      sessionPlayerNames: ["A", "B", "C", "D"],
+      isFinished: false,
+      steps: [{ b: 0x21, y: [{ f: 8, t: { "50": 2 } }] }],
+    });
+    expect(fetchStepData).toHaveBeenCalledWith("round-1");
+  });
+
+  it("still throws from metrics calculation when the session is not finished", async () => {
+    const { computeMetrics } =
+      await import("../../src/features/game/data-metrics");
+
+    fetchSessionData.mockResolvedValue({
+      players: [{ name: "A" }, { name: "B" }, { name: "C" }, { name: "D" }],
+      records: [{ id: "round-1" }],
+      isFinished: false,
+    });
+    fetchStepData.mockResolvedValue({
+      b: 0x21,
+      y: [{ f: 8, t: { "50": 2 } }],
+    });
+
+    await expect(computeMetrics("session-1")).rejects.toThrow(
       "SESSION_NOT_FINISHED",
     );
-    expect(fetchStepData).not.toHaveBeenCalled();
   });
 
   it("maps winners and discarders with seat rotation across rounds", async () => {
