@@ -33,3 +33,7 @@ export interface ReviewerRenderOptions {
   highlightFirstTile: boolean;
   showWeightBars: boolean;
 }
+
+export interface ReviewerPoolSnapshotItem {
+  tiles: string[];
+}

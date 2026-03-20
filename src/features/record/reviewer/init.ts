@@ -3,6 +3,7 @@ import { infoLog } from "../../../shared/logger";
 import { createReviewerUI } from "./ui";
 import { loadReviewData } from "./data";
 import { ReviewerRenderRuntime } from "./render";
+import { ReviewerPoolSnapshotItem } from "./types";
 import {
   ensureReviewStores,
   getTZInstance,
@@ -23,6 +24,7 @@ export function initReviewer(): void {
   ensureReviewStores();
 
   let lastStep: number | null = null;
+  let lastPoolSnapshot: ReviewerPoolSnapshotItem[] | null = null;
   const runtime: ReviewerRenderRuntime = {
     wind: w.WIND as string[],
     tile: w.TILE as string[],
@@ -33,6 +35,10 @@ export function initReviewer(): void {
     getLastStep: () => lastStep,
     setLastStep: (value: number) => {
       lastStep = value;
+    },
+    getLastPoolSnapshot: () => lastPoolSnapshot,
+    setLastPoolSnapshot: (value: ReviewerPoolSnapshotItem[]) => {
+      lastPoolSnapshot = value;
     },
   };
 
