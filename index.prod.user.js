@@ -858,7 +858,11 @@ function extractSessionRecords(raw) {
     })
         .filter((item) => Boolean(item));
 }
-function isSessionFinished(raw) {
+function isSessionFinished(raw, records) {
+    const periods = asNumber(raw.periods);
+    if (periods !== null && periods > 0) {
+        return records.length === periods;
+    }
     if (raw.finished === true || raw.isFinished === true) {
         return true;
     }
@@ -867,7 +871,6 @@ function isSessionFinished(raw) {
         return true;
     }
     const progress = asNumber(raw.progress);
-    const periods = asNumber(raw.periods);
     if (progress !== null && periods !== null && periods > 0) {
         return progress >= periods - 1;
     }
@@ -882,10 +885,11 @@ async function fetchSessionData(sessionId) {
         throw new Error(`HTTP ${response.status} for /_qry/game/`);
     }
     const raw = (await response.json());
+    const records = extractSessionRecords(raw);
     return {
         players: extractSessionPlayers(raw),
-        records: extractSessionRecords(raw),
-        isFinished: isSessionFinished(raw),
+        records,
+        isFinished: isSessionFinished(raw, records),
     };
 }
 
@@ -1708,25 +1712,33 @@ function upsertMetricsRows(metrics) {
         infoLog("Game overview metrics updated", metrics.overall);
     });
 }
-function upsertPendingRow(message) {
+function upsertMetricsMessageRows(message) {
     withAnchorRow((anchor) => {
         clearInsertedRows();
         const cells = Array.from(anchor.children).slice(1);
         const totalColSpan = cells.reduce((sum, cell) => {
             return sum + (cell.colSpan || 1);
         }, 0);
-        const row = document.createElement("tr");
-        row.id = "reviewer-game-pending-row";
-        const header = document.createElement("th");
-        header.className = "bg-secondary text-light";
-        header.textContent = "AI评分";
-        row.appendChild(header);
+        const ratioRow = document.createElement("tr");
+        ratioRow.id = "reviewer-game-ratio-row";
+        const ratioHeader = document.createElement("th");
+        ratioHeader.className = "bg-secondary text-light";
+        ratioHeader.textContent = "一致率";
+        ratioRow.appendChild(ratioHeader);
         const cell = document.createElement("td");
         cell.className = "bg-secondary text-light";
         cell.colSpan = Math.max(totalColSpan, 1);
+        cell.rowSpan = 2;
         cell.textContent = message;
-        row.appendChild(cell);
-        anchor.insertAdjacentElement("afterend", row);
+        ratioRow.appendChild(cell);
+        const chagaRow = document.createElement("tr");
+        chagaRow.id = "reviewer-game-chaga-row";
+        const chagaHeader = document.createElement("th");
+        chagaHeader.className = "bg-secondary text-light";
+        chagaHeader.textContent = "CHAGA度";
+        chagaRow.appendChild(chagaHeader);
+        anchor.insertAdjacentElement("afterend", chagaRow);
+        anchor.insertAdjacentElement("afterend", ratioRow);
     });
 }
 function upsertLoadingRows(message) {
@@ -1770,7 +1782,7 @@ function initGameFeature(href) {
     })
         .catch((error) => {
         if (error?.message === SESSION_NOT_FINISHED_ERROR) {
-            upsertPendingRow("等待对局完成");
+            upsertMetricsMessageRows("请等待牌局完成");
             return;
         }
         warnLog("Game rounds preview failed", error);
@@ -1782,11 +1794,11 @@ function initGameFeature(href) {
     })
         .catch((error) => {
         if (error?.message === SESSION_NOT_FINISHED_ERROR) {
-            upsertPendingRow("等待对局完成");
+            upsertMetricsMessageRows("请等待牌局完成");
             return;
         }
         warnLog("Game overview metrics failed", error);
-        upsertLoadingRows("加载失败");
+        upsertMetricsMessageRows("AI 评分加载失败");
     });
     return true;
 }
