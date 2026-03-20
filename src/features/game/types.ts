@@ -43,4 +43,5 @@ export type MetricsResult = {
 export type PreparedSessionData = {
   sessionPlayerNames: string[];
   steps: StepData[];
+  isFinished: boolean;
 };

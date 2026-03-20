@@ -35,9 +35,21 @@ describe("game feature entry", () => {
   });
 
   it("shows a merged metrics message when the session is not finished", async () => {
+    prepareSessionData.mockResolvedValue({
+      sessionPlayerNames: ["A", "B", "C", "D"],
+      steps: [{ b: 0x21, y: [{ f: 8, t: { "50": 2 } }] }],
+      isFinished: false,
+    });
+    computeRoundOutcomes.mockReturnValue([
+      {
+        roundNo: 1,
+        winners: [],
+        discarderNames: [],
+        selfDraw: false,
+      },
+    ]);
     const { SESSION_NOT_FINISHED_ERROR } =
       await import("../../src/features/game/constants");
-    prepareSessionData.mockRejectedValue(new Error(SESSION_NOT_FINISHED_ERROR));
     computeMetrics.mockRejectedValue(new Error(SESSION_NOT_FINISHED_ERROR));
 
     const { initGameFeature } = await import("../../src/features/game/index");
@@ -48,6 +60,14 @@ describe("game feature entry", () => {
     await Promise.resolve();
     await Promise.resolve();
 
+    expect(installRoundToggleButtons).toHaveBeenCalledWith([
+      {
+        roundNo: 1,
+        winners: [],
+        discarderNames: [],
+        selfDraw: false,
+      },
+    ]);
     expect(upsertMetricsMessageRows).toHaveBeenCalledWith("请等待牌局完成");
     expect(upsertMetricsRows).not.toHaveBeenCalled();
   });

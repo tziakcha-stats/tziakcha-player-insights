@@ -46,9 +46,6 @@ export async function prepareSessionData(
   sessionId: string,
 ): Promise<PreparedSessionData> {
   const sessionData = await fetchSessionData(sessionId);
-  if (!sessionData.isFinished) {
-    throw new Error(SESSION_NOT_FINISHED_ERROR);
-  }
 
   const sessionPlayerNames = sessionData.players.map(
     (player, index) => player.name || `Seat ${index}`,
@@ -57,7 +54,11 @@ export async function prepareSessionData(
     sessionData.records.map((record) => fetchStepData(record.id)),
   );
 
-  return { sessionPlayerNames, steps };
+  return {
+    sessionPlayerNames,
+    steps,
+    isFinished: sessionData.isFinished,
+  };
 }
 
 export function computeRoundOutcomes(
@@ -141,7 +142,10 @@ export async function computeMetrics(
   sessionId: string,
 ): Promise<MetricsResult> {
   const prepared = await prepareSessionData(sessionId);
-  const { sessionPlayerNames, steps } = prepared;
+  const { sessionPlayerNames, steps, isFinished } = prepared;
+  if (!isFinished) {
+    throw new Error(SESSION_NOT_FINISHED_ERROR);
+  }
   const playerMetrics = sessionPlayerNames.map<PlayerMetric>((playerName) => ({
     playerName,
     matched: 0,
