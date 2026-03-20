@@ -312,7 +312,7 @@ export function upsertMetricsRows(metrics: MetricsResult): void {
   });
 }
 
-export function upsertPendingRow(message: string): void {
+export function upsertMetricsMessageRows(message: string): void {
   withAnchorRow((anchor) => {
     clearInsertedRows();
     const cells = Array.from(anchor.children).slice(1);
@@ -320,19 +320,29 @@ export function upsertPendingRow(message: string): void {
       return sum + ((cell as HTMLTableCellElement).colSpan || 1);
     }, 0);
 
-    const row = document.createElement("tr");
-    row.id = "reviewer-game-pending-row";
-    const header = document.createElement("th");
-    header.className = "bg-secondary text-light";
-    header.textContent = "AI评分";
-    row.appendChild(header);
+    const ratioRow = document.createElement("tr");
+    ratioRow.id = "reviewer-game-ratio-row";
+    const ratioHeader = document.createElement("th");
+    ratioHeader.className = "bg-secondary text-light";
+    ratioHeader.textContent = "一致率";
+    ratioRow.appendChild(ratioHeader);
+
     const cell = document.createElement("td");
     cell.className = "bg-secondary text-light";
     cell.colSpan = Math.max(totalColSpan, 1);
+    cell.rowSpan = 2;
     cell.textContent = message;
-    row.appendChild(cell);
+    ratioRow.appendChild(cell);
 
-    anchor.insertAdjacentElement("afterend", row);
+    const chagaRow = document.createElement("tr");
+    chagaRow.id = "reviewer-game-chaga-row";
+    const chagaHeader = document.createElement("th");
+    chagaHeader.className = "bg-secondary text-light";
+    chagaHeader.textContent = "CHAGA度";
+    chagaRow.appendChild(chagaHeader);
+
+    anchor.insertAdjacentElement("afterend", chagaRow);
+    anchor.insertAdjacentElement("afterend", ratioRow);
   });
 }
 

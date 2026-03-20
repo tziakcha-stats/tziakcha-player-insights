@@ -10,7 +10,7 @@ import {
   installRoundToggleButtons,
   upsertLoadingRows,
   upsertMetricsRows,
-  upsertPendingRow,
+  upsertMetricsMessageRows,
 } from "./ui-render";
 
 let startedGameHref = "";
@@ -44,7 +44,7 @@ export function initGameFeature(href: string): boolean {
     })
     .catch((error) => {
       if ((error as Error)?.message === SESSION_NOT_FINISHED_ERROR) {
-        upsertPendingRow("等待对局完成");
+        upsertMetricsMessageRows("请等待牌局完成");
         return;
       }
       warnLog("Game rounds preview failed", error);
@@ -57,11 +57,11 @@ export function initGameFeature(href: string): boolean {
     })
     .catch((error) => {
       if ((error as Error)?.message === SESSION_NOT_FINISHED_ERROR) {
-        upsertPendingRow("等待对局完成");
+        upsertMetricsMessageRows("请等待牌局完成");
         return;
       }
       warnLog("Game overview metrics failed", error);
-      upsertLoadingRows("加载失败");
+      upsertMetricsMessageRows("AI 评分加载失败");
     });
   return true;
 }

@@ -66,7 +66,12 @@ function extractSessionRecords(raw: SessionRaw): SessionRecord[] {
     .filter((item): item is SessionRecord => Boolean(item));
 }
 
-function isSessionFinished(raw: SessionRaw): boolean {
+function isSessionFinished(raw: SessionRaw, records: SessionRecord[]): boolean {
+  const periods = asNumber(raw.periods);
+  if (periods !== null && periods > 0) {
+    return records.length === periods;
+  }
+
   if (raw.finished === true || raw.isFinished === true) {
     return true;
   }
@@ -77,7 +82,6 @@ function isSessionFinished(raw: SessionRaw): boolean {
   }
 
   const progress = asNumber(raw.progress);
-  const periods = asNumber(raw.periods);
   if (progress !== null && periods !== null && periods > 0) {
     return progress >= periods - 1;
   }
@@ -99,9 +103,10 @@ export async function fetchSessionData(
     throw new Error(`HTTP ${response.status} for /_qry/game/`);
   }
   const raw = (await response.json()) as SessionRaw;
+  const records = extractSessionRecords(raw);
   return {
     players: extractSessionPlayers(raw),
-    records: extractSessionRecords(raw),
-    isFinished: isSessionFinished(raw),
+    records,
+    isFinished: isSessionFinished(raw, records),
   };
 }
