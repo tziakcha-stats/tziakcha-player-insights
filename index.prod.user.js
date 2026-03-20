@@ -2125,6 +2125,41 @@ function getTZInstance() {
 
 
 
+const PLAY_PREFIX = "Play ";
+const CALL_PREFIXES = ["Chi", "Peng", "Gang", "BuGang"];
+const BAR_MAX_HEIGHT = 50;
+const BAR_MIN_HEIGHT = 6;
+const PLAY_SOFTMAX_TEMPERATURE = 1.6;
+const RIVER_TILE_SELECTORS = [
+    ".pool .tl",
+    ".river .tl",
+    ".discard .tl",
+    ".show .tl",
+    ".paihe .tl",
+    ".sutehai .tl",
+    ".desk-river .tl",
+    "[class*='river'] .tl",
+    "[class*='discard'] .tl",
+    "[class*='show'] .tl",
+    "[class*='paihe'] .tl",
+    "[class*='sutehai'] .tl",
+    "[class*='pool'] .tl",
+];
+const NON_RIVER_TILE_EXCLUSION_SELECTORS = [
+    ".hand",
+    ".furo",
+    ".fulou",
+    ".meld",
+    ".naki",
+    ".wall",
+    ".rinshan",
+    ".dora",
+    ".dead-wall",
+    ".review-container",
+    "#review",
+    "#res",
+    "#fwin",
+];
 function render_bz2tc(s) {
     const type = s[0];
     const num = Number.parseInt(s.slice(1), 10) - 1;
@@ -2205,9 +2240,12 @@ function parseRound(roundStr, wind) {
     return (wind.findIndex((item) => item === trimmed[0]) * 4 +
         wind.findIndex((item) => item === trimmed[2]));
 }
-function softmax(weights) {
+function softmax(weights, temperature = 1) {
+    if (weights.length === 0) {
+        return [];
+    }
     const maxWeight = Math.max(...weights);
-    const expWeights = weights.map((weight) => Math.exp(weight - maxWeight));
+    const expWeights = weights.map((weight) => Math.exp((weight - maxWeight) / temperature));
     const sumExp = expWeights.reduce((a, b) => a + b, 0);
     return expWeights.map((value) => value / sumExp);
 }
@@ -2226,6 +2264,108 @@ function getPlayerStep() {
     }
     return -18;
 }
+function isPlayCandidate(act) {
+    return act.trim().startsWith(PLAY_PREFIX);
+}
+function isCallCandidate(act) {
+    const trimmed = act.trim();
+    return CALL_PREFIXES.some((prefix) => trimmed.startsWith(prefix));
+}
+function getTileIndexFromPlayAction(act) {
+    return render_bz2tc(act.trim().slice(PLAY_PREFIX.length));
+}
+function toBarHeight(probability) {
+    const eased = Math.sqrt(Math.max(0, probability));
+    return BAR_MIN_HEIGHT + eased * (BAR_MAX_HEIGHT - BAR_MIN_HEIGHT);
+}
+function getPlayCandidates(candidates) {
+    return candidates.filter(([, act]) => isPlayCandidate(act));
+}
+function isVisibleTile(tileEl) {
+    let current = tileEl;
+    while (current) {
+        if (current instanceof HTMLElement && current.hidden) {
+            return false;
+        }
+        const style = window.getComputedStyle(current);
+        if (style.display === "none" || style.visibility === "hidden") {
+            return false;
+        }
+        current = current.parentElement;
+    }
+    return true;
+}
+function findLastRiverTile() {
+    for (const selector of RIVER_TILE_SELECTORS) {
+        const tiles = Array.from(document.querySelectorAll(selector)).filter(isVisibleTile);
+        const lastTile = tiles.at(-1);
+        if (lastTile instanceof HTMLElement) {
+            return lastTile;
+        }
+    }
+    const fallbackTiles = Array.from(document.querySelectorAll(".tl")).filter((tileEl) => isVisibleTile(tileEl) &&
+        !NON_RIVER_TILE_EXCLUSION_SELECTORS.some((selector) => tileEl.closest(selector)));
+    const lastTile = fallbackTiles.at(-1);
+    return lastTile instanceof HTMLElement ? lastTile : null;
+}
+function serializeTile(tileEl) {
+    const htmlTile = tileEl;
+    return [
+        htmlTile.dataset.val ?? "",
+        htmlTile.className,
+        htmlTile.style.left,
+        htmlTile.style.top,
+    ].join("|");
+}
+function capturePoolSnapshot() {
+    return Array.from(document.querySelectorAll(".pool")).map((poolEl) => ({
+        tiles: Array.from(poolEl.querySelectorAll(".tl"))
+            .filter(isVisibleTile)
+            .map(serializeTile),
+    }));
+}
+function findChangedPoolLastTile(previousSnapshot) {
+    const pools = Array.from(document.querySelectorAll(".pool"));
+    if (pools.length === 0 || !previousSnapshot?.length) {
+        return null;
+    }
+    let changedPoolIndex = -1;
+    let bestScore = 0;
+    pools.forEach((poolEl, index) => {
+        const currentTiles = Array.from(poolEl.querySelectorAll(".tl"))
+            .filter(isVisibleTile)
+            .map(serializeTile);
+        const previousTiles = previousSnapshot[index]?.tiles ?? [];
+        if (currentTiles.length < previousTiles.length) {
+            return;
+        }
+        let firstDiffIndex = -1;
+        const sharedLength = Math.min(currentTiles.length, previousTiles.length);
+        for (let tileIndex = 0; tileIndex < sharedLength; tileIndex += 1) {
+            if (currentTiles[tileIndex] !== previousTiles[tileIndex]) {
+                firstDiffIndex = tileIndex;
+                break;
+            }
+        }
+        if (firstDiffIndex === -1 && currentTiles.length === previousTiles.length) {
+            return;
+        }
+        const score = firstDiffIndex === -1
+            ? currentTiles.length - previousTiles.length
+            : currentTiles.length - firstDiffIndex;
+        if (score > bestScore) {
+            changedPoolIndex = index;
+            bestScore = score;
+        }
+    });
+    if (changedPoolIndex < 0) {
+        return null;
+    }
+    const targetPool = pools[changedPoolIndex];
+    const visibleTiles = Array.from(targetPool.querySelectorAll(".tl")).filter(isVisibleTile);
+    const lastTile = visibleTiles.at(-1);
+    return lastTile instanceof HTMLElement ? lastTile : null;
+}
 function showWeightVisualization(candidates, playerIndex, options) {
     if (playerIndex !== 0 || !options.showWeightBars) {
         return;
@@ -2237,16 +2377,17 @@ function showWeightVisualization(candidates, playerIndex, options) {
     const currentHand = handContainers[0];
     const tiles = Array.from(currentHand.querySelectorAll(".tl"));
     const tileWeightMap = new Map();
-    const probs = softmax(candidates.map(([weight]) => weight));
-    candidates.forEach(([, act], idx) => {
-        const actStr = act.trim();
-        if (!actStr.startsWith("Play ")) {
-            return;
-        }
-        const tileCode = actStr.slice(5);
-        const tileIndex = render_bz2tc(tileCode);
-        if (tileIndex >= 0 && tileIndex < 136 && !tileWeightMap.has(tileIndex)) {
-            tileWeightMap.set(tileIndex, probs[idx] ?? 0);
+    const playCandidates = getPlayCandidates(candidates);
+    if (playCandidates.length === 0) {
+        return;
+    }
+    const probs = softmax(playCandidates.map(([weight]) => weight), PLAY_SOFTMAX_TEMPERATURE);
+    playCandidates.forEach(([, act], idx) => {
+        const tileIndex = getTileIndexFromPlayAction(act);
+        if (tileIndex >= 0 && tileIndex < 136) {
+            const nextProb = probs[idx] ?? 0;
+            const prevProb = tileWeightMap.get(tileIndex) ?? 0;
+            tileWeightMap.set(tileIndex, Math.max(prevProb, nextProb));
         }
     });
     tiles.forEach((tileEl) => {
@@ -2265,26 +2406,13 @@ function showWeightVisualization(candidates, playerIndex, options) {
         }
         const bar = document.createElement("div");
         bar.className = "tile-weight-bar";
-        bar.style.height = `${prob * 50}px`;
+        bar.style.height = `${toBarHeight(prob).toFixed(2)}px`;
         htmlTile.appendChild(bar);
     });
 }
-function highlightFirstCandidate(candidates) {
+function highlightHandTile(tileIndex) {
     const tz = getTZInstance();
     if (!tz || typeof tz.stp !== "number" || !tz.stat?.[tz.stp]) {
-        return;
-    }
-    const first = candidates[0];
-    if (!first?.[1]) {
-        return;
-    }
-    const act = first[1].trim();
-    if (!act.startsWith("Play ")) {
-        return;
-    }
-    const tileCode = act.slice(5);
-    const tileIndex = render_bz2tc(tileCode);
-    if (tileIndex < 0 || tileIndex >= 136) {
         return;
     }
     const currentStat = tz.stat[tz.stp];
@@ -2308,9 +2436,32 @@ function highlightFirstCandidate(candidates) {
         if (Math.floor(tileVal / 4) === tileIndex) {
             htmlTile.classList.add("highlight-first-tile");
             highlighted = true;
-            infoLog(`Highlighted tile DOM for player ${playerIndex}: ${tileCode}`);
+            infoLog(`Highlighted hand tile DOM for player ${playerIndex}: ${tileIndex}`);
         }
     });
+}
+function highlightFirstCandidate(candidates, previousPoolSnapshot) {
+    const first = candidates[0];
+    if (!first?.[1]) {
+        return;
+    }
+    const act = first[1].trim();
+    if (isPlayCandidate(act)) {
+        const tileIndex = getTileIndexFromPlayAction(act);
+        if (tileIndex >= 0 && tileIndex < 136) {
+            highlightHandTile(tileIndex);
+        }
+        return;
+    }
+    if (!isCallCandidate(act)) {
+        return;
+    }
+    const riverTile = findChangedPoolLastTile(previousPoolSnapshot) ?? findLastRiverTile();
+    if (!riverTile) {
+        return;
+    }
+    riverTile.classList.add("highlight-first-tile");
+    infoLog(`Highlighted latest river tile for action: ${act}`);
 }
 function showCandidates(runtime) {
     const roundEl = document.getElementById("round");
@@ -2337,6 +2488,7 @@ function showCandidates(runtime) {
     }
     const key = `${round}-${ri}`;
     const resp = getFilledReviews()[key] || getReviews()[key];
+    const previousPoolSnapshot = runtime.getLastPoolSnapshot();
     clearHighlightTiles();
     clearWeightBars();
     const candidates = resp?.extra?.candidates;
@@ -2347,15 +2499,16 @@ function showCandidates(runtime) {
     reviewEl.innerHTML = candidates
         .map(([weight, act]) => `${act2str(act, runtime.tile)}&nbsp;&nbsp;-&nbsp;&nbsp;${weight.toFixed(2)}`)
         .join("<br>");
-    const hasPlay = candidates.some(([, act]) => act.trim().startsWith("Play "));
+    const hasPlay = candidates.some(([, act]) => isPlayCandidate(act));
     if (hasPlay && tz && typeof tz.stp === "number") {
         const currentStat = tz.stat?.[tz.stp];
         const playerIndex = currentStat?.k ?? 0;
         showWeightVisualization(candidates, playerIndex, runtime.options);
     }
-    if (hasPlay && runtime.options.highlightFirstTile) {
-        highlightFirstCandidate(candidates);
+    if (runtime.options.highlightFirstTile) {
+        highlightFirstCandidate(candidates, previousPoolSnapshot);
     }
+    runtime.setLastPoolSnapshot(capturePoolSnapshot());
 }
 function startStepWatcher(runtime) {
     const poll = () => {
@@ -2823,6 +2976,7 @@ function initReviewer() {
     }
     ensureReviewStores();
     let lastStep = null;
+    let lastPoolSnapshot = null;
     const runtime = {
         wind: w.WIND,
         tile: w.TILE,
@@ -2833,6 +2987,10 @@ function initReviewer() {
         getLastStep: () => lastStep,
         setLastStep: (value) => {
             lastStep = value;
+        },
+        getLastPoolSnapshot: () => lastPoolSnapshot,
+        setLastPoolSnapshot: (value) => {
+            lastPoolSnapshot = value;
         },
     };
     createReviewerUI(runtime);
