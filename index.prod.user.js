@@ -1353,12 +1353,13 @@ function getSeatToPlayerOrder(roundNo) {
 }
 async function prepareSessionData(sessionId) {
     const sessionData = await fetchSessionData(sessionId);
-    if (!sessionData.isFinished) {
-        throw new Error(SESSION_NOT_FINISHED_ERROR);
-    }
     const sessionPlayerNames = sessionData.players.map((player, index) => player.name || `Seat ${index}`);
     const steps = await Promise.all(sessionData.records.map((record) => fetchStepData(record.id)));
-    return { sessionPlayerNames, steps };
+    return {
+        sessionPlayerNames,
+        steps,
+        isFinished: sessionData.isFinished,
+    };
 }
 function computeRoundOutcomes(sessionPlayerNames, steps, playerMetrics) {
     const rounds = [];
@@ -1420,7 +1421,10 @@ function computeRoundOutcomes(sessionPlayerNames, steps, playerMetrics) {
 }
 async function computeMetrics(sessionId) {
     const prepared = await prepareSessionData(sessionId);
-    const { sessionPlayerNames, steps } = prepared;
+    const { sessionPlayerNames, steps, isFinished } = prepared;
+    if (!isFinished) {
+        throw new Error(SESSION_NOT_FINISHED_ERROR);
+    }
     const playerMetrics = sessionPlayerNames.map((playerName) => ({
         playerName,
         matched: 0,
@@ -1779,12 +1783,11 @@ function initGameFeature(href) {
         .then((prepared) => {
         const rounds = computeRoundOutcomes(prepared.sessionPlayerNames, prepared.steps);
         installRoundToggleButtons(rounds);
+        if (!prepared.isFinished) {
+            upsertMetricsMessageRows("请等待牌局完成");
+        }
     })
         .catch((error) => {
-        if (error?.message === SESSION_NOT_FINISHED_ERROR) {
-            upsertMetricsMessageRows("请等待牌局完成");
-            return;
-        }
         warnLog("Game rounds preview failed", error);
     });
     void computeMetrics(sessionId)
