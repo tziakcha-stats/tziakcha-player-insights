@@ -811,6 +811,745 @@ function installRouteWatcher(notifyRouteChanged) {
     debugLog("Route watcher installed", { hooked: true });
 }
 
+;// ./src/features/favorites/route.ts
+
+const FAVORITES_HASH = "#reviewer-favorites";
+function isFavoritesHash(href) {
+    try {
+        return new URL(href).hash === FAVORITES_HASH;
+    }
+    catch (_error) {
+        return false;
+    }
+}
+function getFavoritesHref(href = w.location.href) {
+    const url = new URL(href);
+    return `${url.origin}/${FAVORITES_HASH}`;
+}
+
+;// ./src/features/favorites/nav.ts
+
+
+const FAVORITES_NAV_ID = "reviewer-favorites-nav-item";
+const NAV_RETRY_DELAY_MS = 100;
+function findNavContainer() {
+    const selectors = [".navbar-nav", "ul.navbar-nav", ".nav", "nav ul"];
+    for (const selector of selectors) {
+        const found = document.querySelector(selector);
+        if (found instanceof HTMLElement) {
+            return found;
+        }
+    }
+    return null;
+}
+function ensureFavoritesNavItem() {
+    if (document.getElementById(FAVORITES_NAV_ID)) {
+        return false;
+    }
+    const container = findNavContainer();
+    if (!container) {
+        return false;
+    }
+    const item = document.createElement("li");
+    item.id = FAVORITES_NAV_ID;
+    item.className = "nav-item";
+    const link = document.createElement("a");
+    link.className = "nav-link";
+    link.href = getFavoritesHref(w.location.href);
+    link.textContent = "收藏";
+    item.appendChild(link);
+    container.appendChild(item);
+    return true;
+}
+function installFavoritesNavItem(retryCount = 20) {
+    if (ensureFavoritesNavItem()) {
+        return true;
+    }
+    if (document.getElementById(FAVORITES_NAV_ID)) {
+        return false;
+    }
+    if (retryCount > 0) {
+        w.setTimeout(() => installFavoritesNavItem(retryCount - 1), NAV_RETRY_DELAY_MS);
+        return true;
+    }
+    return false;
+}
+
+;// ./src/features/favorites/filter.ts
+function collectFavoritesByTab(document, activeTab) {
+    return activeTab === "game" ? [...document.games] : [...document.records];
+}
+function listTagsForTab(items) {
+    return Array.from(new Set(items.flatMap((item) => item.tags))).sort((left, right) => left.localeCompare(right));
+}
+function filterFavorites(items, selectedTags, query) {
+    const normalizedQuery = query.trim().toLocaleLowerCase();
+    return items.filter((item) => {
+        if (selectedTags.length > 0) {
+            const hasAllTags = selectedTags.every((tag) => item.tags.includes(tag));
+            if (!hasAllTags) {
+                return false;
+            }
+        }
+        if (!normalizedQuery) {
+            return true;
+        }
+        const searchText = [item.title, item.summary, ...item.tags]
+            .join(" ")
+            .toLocaleLowerCase();
+        return searchText.includes(normalizedQuery);
+    });
+}
+
+;// ./src/features/favorites/storage.ts
+
+const FAVORITES_STORAGE_KEY = "tzi-reviewer:favorites";
+const MAX_TAG_LENGTH = 20;
+const MAX_TAG_COUNT = 20;
+function createEmptyDocument(now = new Date().toISOString()) {
+    return {
+        version: 1,
+        updatedAt: now,
+        ui: {
+            activeTab: "game",
+        },
+        games: [],
+        records: [],
+    };
+}
+function isFavoriteType(value) {
+    return value === "game" || value === "record";
+}
+function normalizeTags(tags) {
+    return Array.from(new Set(tags
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0)
+        .map((tag) => tag.slice(0, MAX_TAG_LENGTH))))
+        .sort((left, right) => left.localeCompare(right))
+        .slice(0, MAX_TAG_COUNT);
+}
+function pickLonger(localValue, importedValue) {
+    if (!localValue) {
+        return importedValue;
+    }
+    if (!importedValue) {
+        return localValue;
+    }
+    if (importedValue.length > localValue.length) {
+        return importedValue;
+    }
+    return localValue;
+}
+function sanitizeItem(value) {
+    if (!value || typeof value !== "object") {
+        return null;
+    }
+    const item = value;
+    if (typeof item.id !== "string" ||
+        !isFavoriteType(item.type) ||
+        typeof item.sourceUrl !== "string" ||
+        typeof item.title !== "string" ||
+        typeof item.summary !== "string" ||
+        !Array.isArray(item.tags) ||
+        typeof item.createdAt !== "string" ||
+        typeof item.updatedAt !== "string") {
+        return null;
+    }
+    return {
+        id: item.id,
+        type: item.type,
+        sourceUrl: item.sourceUrl,
+        title: item.title,
+        summary: item.summary,
+        tags: normalizeTags(item.tags.filter((tag) => typeof tag === "string")),
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+    };
+}
+function sanitizeItems(values) {
+    if (!Array.isArray(values)) {
+        return {
+            items: [],
+            invalid: 0,
+        };
+    }
+    return values.reduce((result, value) => {
+        const item = sanitizeItem(value);
+        if (!item) {
+            result.invalid += 1;
+            return result;
+        }
+        result.items.push(item);
+        return result;
+    }, {
+        items: [],
+        invalid: 0,
+    });
+}
+function sanitizeDocument(value) {
+    if (!value || typeof value !== "object") {
+        return createEmptyDocument();
+    }
+    const raw = value;
+    const games = sanitizeItems(raw.games).items;
+    const records = sanitizeItems(raw.records).items;
+    return {
+        version: 1,
+        updatedAt: typeof raw.updatedAt === "string"
+            ? raw.updatedAt
+            : new Date().toISOString(),
+        ui: {
+            activeTab: raw.ui?.activeTab === "record" ? "record" : "game",
+        },
+        games,
+        records,
+    };
+}
+function sanitizeImportDocument(value) {
+    if (!value || typeof value !== "object") {
+        return {
+            document: createEmptyDocument(),
+            invalid: 0,
+        };
+    }
+    const raw = value;
+    const games = sanitizeItems(raw.games);
+    const records = sanitizeItems(raw.records);
+    return {
+        document: {
+            version: 1,
+            updatedAt: typeof raw.updatedAt === "string"
+                ? raw.updatedAt
+                : new Date().toISOString(),
+            ui: {
+                activeTab: raw.ui?.activeTab === "record" ? "record" : "game",
+            },
+            games: games.items,
+            records: records.items,
+        },
+        invalid: games.invalid + records.invalid,
+    };
+}
+function cloneDocument(document) {
+    return {
+        version: 1,
+        updatedAt: document.updatedAt,
+        ui: {
+            activeTab: document.ui.activeTab,
+        },
+        games: document.games.map((item) => ({ ...item, tags: [...item.tags] })),
+        records: document.records.map((item) => ({
+            ...item,
+            tags: [...item.tags],
+        })),
+    };
+}
+function getBucket(document, type) {
+    return type === "game" ? document.games : document.records;
+}
+function upsertItem(document, draft, now) {
+    const bucket = getBucket(document, draft.type);
+    const existingIndex = bucket.findIndex((item) => item.id === draft.id);
+    if (existingIndex >= 0) {
+        const existing = bucket[existingIndex];
+        const nextItem = {
+            ...existing,
+            sourceUrl: draft.sourceUrl,
+            title: draft.title,
+            summary: draft.summary,
+            tags: normalizeTags(draft.tags),
+            updatedAt: now,
+        };
+        bucket.splice(existingIndex, 1, nextItem);
+        return nextItem;
+    }
+    const nextItem = {
+        ...draft,
+        tags: normalizeTags(draft.tags),
+        createdAt: now,
+        updatedAt: now,
+    };
+    bucket.push(nextItem);
+    return nextItem;
+}
+function createFavoritesRepository(storage = w.localStorage) {
+    let available = true;
+    try {
+        storage?.getItem(FAVORITES_STORAGE_KEY);
+    }
+    catch (_error) {
+        available = false;
+    }
+    function read() {
+        if (!available || !storage) {
+            return createEmptyDocument();
+        }
+        try {
+            const raw = storage.getItem(FAVORITES_STORAGE_KEY);
+            if (!raw) {
+                return createEmptyDocument();
+            }
+            return sanitizeDocument(JSON.parse(raw));
+        }
+        catch (_error) {
+            return createEmptyDocument();
+        }
+    }
+    function write(document) {
+        if (!available || !storage) {
+            return false;
+        }
+        try {
+            storage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(document));
+            return true;
+        }
+        catch (_error) {
+            available = false;
+            return false;
+        }
+    }
+    return {
+        isAvailable() {
+            return available;
+        },
+        read() {
+            return cloneDocument(read());
+        },
+        get(type, id) {
+            return (read()[type === "game" ? "games" : "records"].find((item) => item.id === id) ?? null);
+        },
+        save(draft, now = new Date().toISOString()) {
+            const document = read();
+            document.updatedAt = now;
+            upsertItem(document, draft, now);
+            return write(document);
+        },
+        remove(type, id, now = new Date().toISOString()) {
+            const document = read();
+            const bucket = getBucket(document, type);
+            const nextBucket = bucket.filter((item) => item.id !== id);
+            if (nextBucket.length === bucket.length) {
+                return false;
+            }
+            document.updatedAt = now;
+            if (type === "game") {
+                document.games = nextBucket;
+            }
+            else {
+                document.records = nextBucket;
+            }
+            return write(document);
+        },
+        importDocument(value, now = new Date().toISOString()) {
+            const incoming = sanitizeImportDocument(value);
+            const document = read();
+            const result = {
+                added: 0,
+                merged: 0,
+                invalid: incoming.invalid,
+            };
+            const mergeOne = (item) => {
+                const bucket = getBucket(document, item.type);
+                const existingIndex = bucket.findIndex((entry) => entry.id === item.id);
+                if (existingIndex < 0) {
+                    bucket.push({ ...item, tags: normalizeTags(item.tags) });
+                    result.added += 1;
+                    return;
+                }
+                const existing = bucket[existingIndex];
+                bucket.splice(existingIndex, 1, {
+                    ...existing,
+                    sourceUrl: pickLonger(existing.sourceUrl, item.sourceUrl),
+                    title: pickLonger(existing.title, item.title),
+                    summary: pickLonger(existing.summary, item.summary),
+                    tags: normalizeTags([...existing.tags, ...item.tags]),
+                    createdAt: existing.createdAt && item.createdAt
+                        ? existing.createdAt <= item.createdAt
+                            ? existing.createdAt
+                            : item.createdAt
+                        : existing.createdAt || item.createdAt,
+                    updatedAt: now,
+                });
+                result.merged += 1;
+            };
+            incoming.document.games.forEach(mergeOne);
+            incoming.document.records.forEach(mergeOne);
+            document.updatedAt = now;
+            write(document);
+            return result;
+        },
+        exportDocument() {
+            return cloneDocument(read());
+        },
+        setActiveTab(tab) {
+            const document = read();
+            document.ui.activeTab = tab;
+            document.updatedAt = new Date().toISOString();
+            return write(document);
+        },
+    };
+}
+
+;// ./src/features/favorites/page.ts
+
+
+const ROOT_ID = "reviewer-favorites-page";
+let mountedTarget = null;
+let previousNodes = null;
+function getMountTarget() {
+    const target = document.querySelector("main");
+    if (target instanceof HTMLElement) {
+        return target;
+    }
+    return document.body;
+}
+function createButton(id, text) {
+    const button = document.createElement("button");
+    button.id = id;
+    button.type = "button";
+    button.textContent = text;
+    return button;
+}
+function getItemKey(item) {
+    return `${item.type}:${item.id}`;
+}
+function buildFavoritesExportFilename(now = new Date()) {
+    const pad2 = (value) => String(value).padStart(2, "0");
+    return `favorites-${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}-${pad2(now.getHours())}${pad2(now.getMinutes())}${pad2(now.getSeconds())}.json`;
+}
+function renderList(container, items, editingKey, showEditControls, showDeleteControls, onStartEdit, onCancelEdit, onSaveSummary, onRemove) {
+    if (items.length === 0) {
+        const empty = document.createElement("p");
+        empty.className = "text-secondary mb-0";
+        empty.textContent = "当前条件下没有收藏";
+        container.appendChild(empty);
+        return;
+    }
+    items.forEach((item) => {
+        const card = document.createElement("tr");
+        const itemKey = getItemKey(item);
+        const link = document.createElement("a");
+        link.href = item.sourceUrl;
+        link.textContent = item.title;
+        link.target = "_blank";
+        const titleCell = document.createElement("td");
+        titleCell.appendChild(link);
+        const summaryCell = document.createElement("td");
+        if (editingKey === itemKey) {
+            const summaryEditor = document.createElement("textarea");
+            summaryEditor.id = "reviewer-favorites-summary-editor";
+            summaryEditor.className = "form-control form-control-sm";
+            summaryEditor.rows = 2;
+            summaryEditor.value = item.summary;
+            summaryCell.appendChild(summaryEditor);
+        }
+        else {
+            summaryCell.textContent = item.summary || "-";
+        }
+        const tagsCell = document.createElement("td");
+        tagsCell.textContent = `标签：${item.tags.join("、") || "-"}`;
+        const actionCell = document.createElement("td");
+        if (editingKey === itemKey) {
+            const saveButton = document.createElement("button");
+            saveButton.type = "button";
+            saveButton.id = "reviewer-favorites-summary-save";
+            saveButton.className = "btn btn-outline-secondary btn-sm me-2";
+            saveButton.textContent = "保存";
+            saveButton.addEventListener("click", () => {
+                const editor = summaryCell.querySelector("#reviewer-favorites-summary-editor");
+                onSaveSummary(item, editor?.value ?? "");
+            });
+            const cancelButton = document.createElement("button");
+            cancelButton.type = "button";
+            cancelButton.className = "btn btn-outline-secondary btn-sm";
+            cancelButton.textContent = "取消";
+            cancelButton.addEventListener("click", onCancelEdit);
+            actionCell.appendChild(saveButton);
+            actionCell.appendChild(cancelButton);
+        }
+        else {
+            if (showEditControls) {
+                const editButton = document.createElement("button");
+                editButton.type = "button";
+                editButton.className = "btn btn-outline-secondary btn-sm me-2";
+                editButton.dataset.editType = item.type;
+                editButton.dataset.editId = item.id;
+                editButton.textContent = "编辑";
+                editButton.addEventListener("click", () => onStartEdit(item));
+                actionCell.appendChild(editButton);
+            }
+            if (showDeleteControls) {
+                const removeButton = document.createElement("button");
+                removeButton.type = "button";
+                removeButton.className = "btn btn-outline-danger btn-sm";
+                removeButton.dataset.removeType = item.type;
+                removeButton.dataset.removeId = item.id;
+                removeButton.textContent = "删除";
+                removeButton.addEventListener("click", () => onRemove(item));
+                actionCell.appendChild(removeButton);
+            }
+        }
+        card.appendChild(titleCell);
+        card.appendChild(summaryCell);
+        card.appendChild(tagsCell);
+        card.appendChild(actionCell);
+        container.appendChild(card);
+    });
+}
+function snapshotTarget(target) {
+    if (mountedTarget === target && previousNodes) {
+        return;
+    }
+    mountedTarget = target;
+    previousNodes = Array.from(target.childNodes);
+}
+function cleanupFavoritesPage() {
+    const existing = document.getElementById(ROOT_ID);
+    existing?.remove();
+    if (mountedTarget && previousNodes) {
+        mountedTarget.replaceChildren(...previousNodes);
+    }
+    mountedTarget = null;
+    previousNodes = null;
+}
+async function readFileText(file) {
+    if (typeof file.text === "function") {
+        return file.text();
+    }
+    return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            resolve(String(reader.result ?? ""));
+        };
+        reader.onerror = () => {
+            reject(reader.error ?? new Error("Failed to read file"));
+        };
+        reader.readAsText(file);
+    });
+}
+function initFavoritesPageFeature(_href, repository = createFavoritesRepository()) {
+    const mountTarget = getMountTarget();
+    snapshotTarget(mountTarget);
+    cleanupFavoritesPage();
+    snapshotTarget(mountTarget);
+    const root = document.createElement("section");
+    root.id = ROOT_ID;
+    const container = document.createElement("div");
+    container.className = "container";
+    container.style.minHeight = "50em";
+    const spacer = document.createElement("div");
+    spacer.style.height = "4em";
+    container.appendChild(spacer);
+    const card = document.createElement("div");
+    card.className = "card";
+    card.style.margin = "1em 0";
+    const cardBody = document.createElement("div");
+    cardBody.className = "card-body";
+    card.appendChild(cardBody);
+    container.appendChild(card);
+    root.appendChild(container);
+    const heading = document.createElement("h3");
+    heading.className = "text-center";
+    heading.textContent = "收藏";
+    cardBody.appendChild(heading);
+    const notice = document.createElement("p");
+    notice.className = "text-secondary text-center";
+    notice.textContent =
+        "提示：此收藏功能为非官方实现，数据仅保存在当前浏览器本地。";
+    cardBody.appendChild(notice);
+    if (!repository.isAvailable()) {
+        const unavailable = document.createElement("p");
+        unavailable.className = "text-center text-secondary";
+        unavailable.textContent = "收藏功能当前不可用";
+        cardBody.appendChild(unavailable);
+        mountTarget.replaceChildren(root);
+        return true;
+    }
+    const toolbar = document.createElement("div");
+    toolbar.className = "d-flex flex-wrap gap-2 align-items-center mb-3";
+    const backButton = createButton("reviewer-favorites-back", "返回主页");
+    backButton.className = "btn btn-outline-secondary btn-sm";
+    const gameTabButton = createButton("reviewer-favorites-tab-game", "对局收藏");
+    gameTabButton.className = "btn btn-outline-secondary btn-sm";
+    const recordTabButton = createButton("reviewer-favorites-tab-record", "小局收藏");
+    recordTabButton.className = "btn btn-outline-secondary btn-sm";
+    const toggleEditButton = createButton("reviewer-favorites-toggle-edit", "编辑");
+    toggleEditButton.className = "btn btn-outline-secondary btn-sm";
+    const toggleDeleteButton = createButton("reviewer-favorites-toggle-delete", "删除");
+    toggleDeleteButton.className = "btn btn-outline-secondary btn-sm";
+    const exportButton = createButton("reviewer-favorites-export", "导出");
+    exportButton.className = "btn btn-outline-secondary btn-sm";
+    const importButton = createButton("reviewer-favorites-import", "导入");
+    importButton.className = "btn btn-outline-secondary btn-sm";
+    const searchInput = document.createElement("input");
+    searchInput.id = "reviewer-favorites-search";
+    searchInput.type = "search";
+    searchInput.placeholder = "搜索标题、摘要、标签";
+    searchInput.className = "form-control form-control-sm";
+    searchInput.style.maxWidth = "18em";
+    const importInput = document.createElement("input");
+    importInput.id = "reviewer-favorites-import-input";
+    importInput.type = "file";
+    importInput.accept = "application/json";
+    importInput.style.display = "none";
+    toolbar.appendChild(backButton);
+    toolbar.appendChild(gameTabButton);
+    toolbar.appendChild(recordTabButton);
+    toolbar.appendChild(toggleEditButton);
+    toolbar.appendChild(toggleDeleteButton);
+    toolbar.appendChild(exportButton);
+    toolbar.appendChild(importButton);
+    toolbar.appendChild(searchInput);
+    toolbar.appendChild(importInput);
+    cardBody.appendChild(toolbar);
+    const feedback = document.createElement("p");
+    feedback.className = "text-secondary";
+    cardBody.appendChild(feedback);
+    const tagBar = document.createElement("div");
+    tagBar.className = "d-flex flex-wrap gap-2 mb-3";
+    cardBody.appendChild(tagBar);
+    const tableWrap = document.createElement("div");
+    tableWrap.className = "table-responsive";
+    const table = document.createElement("table");
+    table.className = "table table-sm table-hover";
+    table.style.tableLayout = "fixed";
+    const thead = document.createElement("thead");
+    thead.className = "table-dark";
+    thead.innerHTML =
+        "<tr><th>标题</th><th>摘要</th><th>标签</th><th>操作</th></tr>";
+    const list = document.createElement("tbody");
+    table.appendChild(thead);
+    table.appendChild(list);
+    tableWrap.appendChild(table);
+    cardBody.appendChild(tableWrap);
+    const selectedTags = new Set();
+    let searchQuery = "";
+    let editingKey = null;
+    let showEditControls = false;
+    let showDeleteControls = false;
+    const render = () => {
+        const documentState = repository.read();
+        const activeTab = documentState.ui.activeTab;
+        const activeItems = collectFavoritesByTab(documentState, activeTab);
+        const visibleTags = listTagsForTab(activeItems);
+        const filtered = filterFavorites(activeItems, [...selectedTags], searchQuery);
+        gameTabButton.disabled = activeTab === "game";
+        recordTabButton.disabled = activeTab === "record";
+        toggleEditButton.classList.toggle("active", showEditControls);
+        toggleDeleteButton.classList.toggle("active", showDeleteControls);
+        tagBar.replaceChildren();
+        visibleTags.forEach((tag) => {
+            const tagButton = document.createElement("button");
+            tagButton.type = "button";
+            tagButton.dataset.tag = tag;
+            tagButton.textContent = tag;
+            tagButton.className = "btn btn-outline-secondary btn-sm";
+            tagButton.setAttribute("aria-pressed", selectedTags.has(tag) ? "true" : "false");
+            tagButton.addEventListener("click", () => {
+                if (selectedTags.has(tag)) {
+                    selectedTags.delete(tag);
+                }
+                else {
+                    selectedTags.add(tag);
+                }
+                render();
+            });
+            tagBar.appendChild(tagButton);
+        });
+        list.replaceChildren();
+        renderList(list, filtered, editingKey, showEditControls, showDeleteControls, (item) => {
+            editingKey = getItemKey(item);
+            render();
+        }, () => {
+            editingKey = null;
+            render();
+        }, (item, summary) => {
+            repository.save({
+                id: item.id,
+                type: item.type,
+                sourceUrl: item.sourceUrl,
+                title: item.title,
+                summary: summary.trim(),
+                tags: item.tags,
+            });
+            editingKey = null;
+            render();
+        }, (item) => {
+            repository.remove(item.type, item.id);
+            if (editingKey === getItemKey(item)) {
+                editingKey = null;
+            }
+            render();
+        });
+    };
+    backButton.addEventListener("click", () => {
+        cleanupFavoritesPage();
+        window.history.pushState(window.history.state, "", "/");
+    });
+    gameTabButton.addEventListener("click", () => {
+        repository.setActiveTab("game");
+        selectedTags.clear();
+        editingKey = null;
+        render();
+    });
+    recordTabButton.addEventListener("click", () => {
+        repository.setActiveTab("record");
+        selectedTags.clear();
+        editingKey = null;
+        render();
+    });
+    toggleEditButton.addEventListener("click", () => {
+        showEditControls = !showEditControls;
+        if (!showEditControls) {
+            editingKey = null;
+        }
+        render();
+    });
+    toggleDeleteButton.addEventListener("click", () => {
+        showDeleteControls = !showDeleteControls;
+        render();
+    });
+    searchInput.addEventListener("input", () => {
+        searchQuery = searchInput.value;
+        render();
+    });
+    exportButton.addEventListener("click", () => {
+        const documentState = repository.exportDocument();
+        const blob = new Blob([JSON.stringify(documentState, null, 2)], {
+            type: "application/json",
+        });
+        const href = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = href;
+        link.download = buildFavoritesExportFilename();
+        if (!window.navigator.userAgent.includes("jsdom")) {
+            link.click();
+        }
+        URL.revokeObjectURL(href);
+    });
+    importButton.addEventListener("click", () => {
+        importInput.click();
+    });
+    importInput.addEventListener("change", async () => {
+        const file = importInput.files?.[0];
+        if (!file) {
+            return;
+        }
+        try {
+            const parsed = JSON.parse(await readFileText(file));
+            const result = repository.importDocument(parsed);
+            feedback.textContent = `新增 ${result.added} 合并 ${result.merged} 失败 ${result.invalid}`;
+            render();
+        }
+        catch (_error) {
+            feedback.textContent = "导入失败";
+        }
+    });
+    mountTarget.replaceChildren(root);
+    render();
+    return true;
+}
+
 ;// ./src/shared/cookie.ts
 
 function logCurrentCookie() {
@@ -821,6 +1560,185 @@ function logCurrentCookie() {
     catch (error) {
         warnLog("Failed to read cookie", error);
     }
+}
+
+;// ./src/features/favorites/entry-editor.ts
+function normalizeTag(raw) {
+    return raw.trim();
+}
+function createFavoriteEditor(prefix) {
+    const editor = document.createElement("div");
+    editor.style.display = "none";
+    editor.style.width = "100%";
+    editor.style.flexDirection = "column";
+    editor.style.gap = "8px";
+    const summaryInput = document.createElement("textarea");
+    summaryInput.id = `reviewer-${prefix}-favorite-summary`;
+    summaryInput.placeholder = "输入摘要";
+    summaryInput.rows = 2;
+    summaryInput.className = "form-control form-control-sm";
+    const tagList = document.createElement("div");
+    tagList.className = "d-flex flex-wrap gap-2";
+    const tagInput = document.createElement("input");
+    tagInput.id = `reviewer-${prefix}-favorite-tag-input`;
+    tagInput.type = "text";
+    tagInput.placeholder = "输入标签后按回车";
+    tagInput.className = "form-control form-control-sm";
+    const saveButton = document.createElement("button");
+    saveButton.id = `reviewer-${prefix}-favorite-save`;
+    saveButton.type = "button";
+    saveButton.textContent = "保存";
+    saveButton.className = "btn btn-outline-secondary btn-sm align-self-start";
+    let tags = [];
+    const renderTags = () => {
+        tagList.replaceChildren();
+        tags.forEach((tag) => {
+            const tagButton = document.createElement("button");
+            tagButton.type = "button";
+            tagButton.className = "btn btn-outline-secondary btn-sm";
+            tagButton.textContent = `${tag} ×`;
+            tagButton.addEventListener("click", () => {
+                tags = tags.filter((item) => item !== tag);
+                renderTags();
+            });
+            tagList.appendChild(tagButton);
+        });
+    };
+    const commitTag = () => {
+        const tag = normalizeTag(tagInput.value);
+        if (!tag || tags.includes(tag)) {
+            tagInput.value = "";
+            return;
+        }
+        tags = [...tags, tag];
+        tagInput.value = "";
+        renderTags();
+    };
+    tagInput.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== ",") {
+            return;
+        }
+        event.preventDefault();
+        commitTag();
+    });
+    tagInput.addEventListener("blur", () => {
+        commitTag();
+    });
+    editor.appendChild(summaryInput);
+    editor.appendChild(tagList);
+    editor.appendChild(tagInput);
+    editor.appendChild(saveButton);
+    return {
+        editor,
+        summaryInput,
+        tagInput,
+        saveButton,
+        getTags: () => [...tags],
+        setValue: (summary, nextTags) => {
+            summaryInput.value = summary;
+            tags = [...nextTags];
+            tagInput.value = "";
+            renderTags();
+        },
+    };
+}
+
+;// ./src/features/favorites/game-entry.ts
+
+
+const game_entry_ROOT_ID = "reviewer-game-favorite";
+const RETRY_DELAY_MS = 100;
+let scheduledGameId = "";
+function getGameId() {
+    return new URL(window.location.href).searchParams.get("id");
+}
+function getGameTitle() {
+    const heading = document.querySelector("h1");
+    const headingText = heading?.textContent?.trim();
+    if (headingText) {
+        return headingText;
+    }
+    return document.title || "收藏对局";
+}
+function createRoot() {
+    const root = document.createElement("div");
+    root.id = game_entry_ROOT_ID;
+    root.className = "reviewer-favorite-entry";
+    root.style.margin = "12px 0";
+    root.style.display = "flex";
+    root.style.gap = "8px";
+    root.style.alignItems = "center";
+    root.style.flexWrap = "wrap";
+    return root;
+}
+function findMountTarget() {
+    const target = document.querySelector(".table-wrap, table.table, table");
+    if (target instanceof HTMLElement) {
+        return target;
+    }
+    return null;
+}
+function mountIntoTarget(repository, gameId, retryCount) {
+    if (document.getElementById(game_entry_ROOT_ID)) {
+        return;
+    }
+    const target = findMountTarget();
+    if (!target) {
+        if (retryCount > 0) {
+            window.setTimeout(() => mountIntoTarget(repository, gameId, retryCount - 1), RETRY_DELAY_MS);
+        }
+        else {
+            scheduledGameId = "";
+        }
+        return;
+    }
+    const root = createRoot();
+    const button = document.createElement("button");
+    button.id = "reviewer-game-favorite-button";
+    button.type = "button";
+    button.className = "btn btn-outline-secondary btn-sm";
+    const { editor, saveButton, setValue, getTags, summaryInput } = createFavoriteEditor("game");
+    const refreshState = () => {
+        const favorite = repository.get("game", gameId);
+        button.textContent = favorite ? "已收藏" : "加入收藏";
+        setValue(favorite?.summary ?? "", favorite?.tags ?? []);
+    };
+    button.disabled = repository.isAvailable() === false;
+    refreshState();
+    button.addEventListener("click", () => {
+        editor.style.display = editor.style.display === "none" ? "flex" : "none";
+    });
+    saveButton.addEventListener("click", () => {
+        const saved = repository.save({
+            id: gameId,
+            type: "game",
+            sourceUrl: window.location.href,
+            title: getGameTitle(),
+            summary: summaryInput.value.trim(),
+            tags: getTags(),
+        });
+        if (!saved) {
+            return;
+        }
+        editor.style.display = "none";
+        refreshState();
+    });
+    root.appendChild(button);
+    root.appendChild(editor);
+    target.parentElement?.insertBefore(root, target);
+    scheduledGameId = "";
+}
+function mountGameFavoriteEntry(repository = createFavoritesRepository()) {
+    const gameId = getGameId();
+    if (!gameId) {
+        return false;
+    }
+    if (document.getElementById(game_entry_ROOT_ID) || scheduledGameId === gameId) {
+        return false;
+    }
+    scheduledGameId = gameId;
+    mountIntoTarget(repository, gameId, 20);
+    return true;
 }
 
 ;// ./src/shared/session-data.ts
@@ -1761,6 +2679,7 @@ function upsertLoadingRows(message) {
 
 
 
+
 let startedGameHref = "";
 function getGameIdFromUrl() {
     const url = new URL(w.location.href);
@@ -1777,6 +2696,7 @@ function initGameFeature(href) {
         return false;
     }
     infoLog("Game feature init started", { sessionId });
+    mountGameFavoriteEntry();
     upsertLoadingRows("计算中...");
     const preparedPromise = prepareSessionData(sessionId);
     void preparedPromise
@@ -1993,7 +2913,95 @@ function initUserGameFeature(href) {
     return true;
 }
 
+;// ./src/features/favorites/record-entry.ts
+
+
+
+const record_entry_ROOT_ID = "reviewer-record-favorite";
+const record_entry_RETRY_DELAY_MS = 100;
+function getRecordId() {
+    return new URL(w.location.href).searchParams.get("id");
+}
+function getRecordTitle() {
+    const gameAnchor = document.querySelector("#ti a");
+    const gameTitle = gameAnchor?.textContent?.trim();
+    if (gameTitle) {
+        return gameTitle;
+    }
+    const titleEl = document.querySelector("title");
+    const titleText = titleEl?.textContent?.trim();
+    if (titleText) {
+        return titleText;
+    }
+    return document.title || "收藏小局";
+}
+function record_entry_createRoot() {
+    const root = document.createElement("div");
+    root.id = record_entry_ROOT_ID;
+    root.className = "ctrl-e";
+    root.style.display = "flex";
+    root.style.gap = "8px";
+    root.style.alignItems = "center";
+    root.style.flexWrap = "wrap";
+    return root;
+}
+function mountIntoCtrl(repository, recordId, retryCount) {
+    if (document.getElementById(record_entry_ROOT_ID)) {
+        return;
+    }
+    const ctrl = document.getElementById("ctrl");
+    if (!ctrl) {
+        if (retryCount > 0) {
+            w.setTimeout(() => mountIntoCtrl(repository, recordId, retryCount - 1), record_entry_RETRY_DELAY_MS);
+        }
+        return;
+    }
+    const root = record_entry_createRoot();
+    const button = document.createElement("button");
+    button.id = "reviewer-record-favorite-button";
+    button.type = "button";
+    button.className = "btn btn-outline-secondary btn-sm";
+    const { editor, saveButton, setValue, getTags, summaryInput } = createFavoriteEditor("record");
+    const refreshState = () => {
+        const favorite = repository.get("record", recordId);
+        button.textContent = favorite ? "已收藏" : "加入收藏";
+        setValue(favorite?.summary ?? "", favorite?.tags ?? []);
+    };
+    button.disabled = !repository.isAvailable();
+    refreshState();
+    button.addEventListener("click", () => {
+        editor.style.display = editor.style.display === "none" ? "flex" : "none";
+    });
+    saveButton.addEventListener("click", () => {
+        const saved = repository.save({
+            id: recordId,
+            type: "record",
+            sourceUrl: w.location.href,
+            title: getRecordTitle(),
+            summary: summaryInput.value.trim(),
+            tags: getTags(),
+        });
+        if (!saved) {
+            return;
+        }
+        editor.style.display = "none";
+        refreshState();
+    });
+    root.appendChild(button);
+    root.appendChild(editor);
+    ctrl.appendChild(root);
+}
+function mountRecordFavoriteEntry(repository = createFavoritesRepository()) {
+    const recordId = getRecordId();
+    if (!recordId) {
+        return false;
+    }
+    mountIntoCtrl(repository, recordId, 10);
+    return true;
+}
+
 ;// ./src/shared/route.ts
+
 
 function isRecordPage() {
     return /^\/record(?:\/|$)/.test(w.location.pathname);
@@ -2009,6 +3017,9 @@ function isHistoryPage() {
 }
 function isUserGamePage() {
     return /^\/user\/game(?:\/|$)/.test(w.location.pathname);
+}
+function isFavoritesPage() {
+    return w.location.hash === FAVORITES_HASH;
 }
 
 ;// ./src/features/record/guards.ts
@@ -3020,6 +4031,7 @@ function initReviewer() {
 
 
 
+
 let startedRecordHref = "";
 function initRecordFeature(href) {
     if (startedRecordHref === href) {
@@ -3033,6 +4045,7 @@ function initRecordFeature(href) {
         setReviewError("未能进入页面上下文，可能脚本被沙箱隔离");
     }
     w.setTimeout(initReviewer, 500);
+    w.setTimeout(() => mountRecordFavoriteEntry(), 550);
     return true;
 }
 
@@ -3342,6 +4355,8 @@ function initTechFeature(href) {
 
 
 
+
+
 const routeState = {
     lastHref: "",
 };
@@ -3352,6 +4367,7 @@ function runOnRoute() {
     }
     routeState.lastHref = href;
     const routeFlags = {
+        favorites: isFavoritesPage(),
         game: isGamePage(),
         record: isRecordPage(),
         tech: isTechPage(),
@@ -3364,6 +4380,14 @@ function runOnRoute() {
         routeFlags,
     });
     logCurrentCookie();
+    installFavoritesNavItem();
+    if (routeFlags.favorites) {
+        if (initFavoritesPageFeature(href)) {
+            debugLog("Favorites route init dispatched");
+        }
+        return;
+    }
+    cleanupFavoritesPage();
     if (routeFlags.game) {
         if (initGameFeature(href)) {
             debugLog("Game route init dispatched");
