@@ -33,9 +33,11 @@
 
 ## 功能
 
-|用户风格|一键家访|
-|:--:|:--:|
-|![style](https://cdn.jsdelivr.net/gh/tziakcha-stats/tziakcha-player-insights/docs/img/tech.png)|![homepage](https://cdn.jsdelivr.net/gh/tziakcha-stats/tziakcha-player-insights/docs/img/homepage.png)|
+|用户风格|一键家访|本地收藏|
+|:--:|:--:|:--:|
+|![style](https://cdn.jsdelivr.net/gh/tziakcha-stats/tziakcha-player-insights/docs/img/tech.png)|![homepage](https://cdn.jsdelivr.net/gh/tziakcha-stats/tziakcha-player-insights/docs/img/homepage.png)|![favorites](https://cdn.jsdelivr.net/gh/tziakcha-stats/tziakcha-player-insights/docs/img/favorites.png)|
+
+新增的本地收藏功能支持在牌谱与小局页面直接收藏内容，在收藏夹中管理标签、备注，并执行导入导出。
 
 脚本在牌谱回放页面的控制面板右侧提供以下功能：
 
@@ -52,4 +54,3 @@
 ## 实现
 
 脚本通过拦截雀渣平台的 `TZ` 构造函数获取游戏实例，同步当前回放步数。分析数据从 CHAGA API（`https://tc-api.pesiu.org/review/`）异步获取，包含每个回合每个座位的候选打法和权重。对于缺失的中间步数，脚本会自动填充最近的有效数据以保持连续性。
-
