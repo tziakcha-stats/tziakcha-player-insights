@@ -56,6 +56,7 @@ function renderZumgze(fan: FanData = {}): void {
 
   let wrap = document.getElementById("reviewer-zumgze-wrap");
   const basicTable = document.getElementById("basic");
+  const analysisHost = document.getElementById("reviewer-tech-analysis-zumgze");
   if (!wrap && basicTable) {
     wrap = document.createElement("div");
     wrap.id = "reviewer-zumgze-wrap";
@@ -78,11 +79,15 @@ function renderZumgze(fan: FanData = {}): void {
         <div id="reviewer-zumgze-similarity-ci" class="zumgze-score-ci" style="display:none;">95% 置信区间：<span id="reviewer-zumgze-similarity-ci-value">0.00 / 100 ～ 0.00 / 100</span></div>
       </div>
     `;
-    const basicHeading = basicTable.previousElementSibling;
-    if (basicHeading && basicHeading.tagName === "H4") {
-      basicHeading.parentNode?.insertBefore(wrap, basicHeading);
+    if (analysisHost) {
+      analysisHost.appendChild(wrap);
     } else {
-      basicTable.parentNode?.insertBefore(wrap, basicTable);
+      const basicHeading = basicTable.previousElementSibling;
+      if (basicHeading && basicHeading.tagName === "H4") {
+        basicHeading.parentNode?.insertBefore(wrap, basicHeading);
+      } else {
+        basicTable.parentNode?.insertBefore(wrap, basicTable);
+      }
     }
   }
 
