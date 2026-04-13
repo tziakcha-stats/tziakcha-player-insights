@@ -1,0 +1,134 @@
+#reviewer-tech-analysis-panel {
+  margin-top: 1.2em;
+}
+
+#reviewer-tech-analysis-panel .reviewer-style-players {
+  display: grid;
+  gap: 0.75em;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin-bottom: 0.75em;
+}
+
+#reviewer-tech-analysis-panel .reviewer-style-player-card {
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 0.55em;
+  background: #f8f9fa;
+}
+
+#reviewer-tech-analysis-panel .reviewer-style-player-title {
+  font-weight: 600;
+  margin-bottom: 0.35em;
+}
+
+#reviewer-tech-analysis-panel .reviewer-style-player-card input,
+#reviewer-tech-analysis-panel .reviewer-style-player-card select {
+  margin-bottom: 0.4em;
+}
+
+#reviewer-tech-analysis-panel .reviewer-style-picked {
+  font-size: 0.85rem;
+}
+
+#reviewer-tech-analysis-panel .reviewer-style-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5em;
+  align-items: center;
+  margin: 0.35em 0 0.65em;
+}
+
+#reviewer-tech-analysis-panel .reviewer-style-summary {
+  font-weight: 600;
+  margin-bottom: 0.35em;
+}
+
+#reviewer-tech-analysis-panel .reviewer-style-score-trigger {
+  cursor: help;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
+#reviewer-tech-analysis-panel .reviewer-style-score-ci {
+  margin-top: 0.15em;
+  font-size: 12px;
+  color: #6c757d;
+}
+
+#reviewer-tech-analysis-panel .reviewer-style-subtabs {
+  margin: 0.4em 0 0.5em;
+}
+
+#reviewer-tech-analysis-panel .reviewer-style-subtabs .nav-link {
+  padding: 0.2em 0.6em;
+  font-size: 0.86rem;
+}
+
+#reviewer-tech-analysis-panel .reviewer-style-subtitle {
+  margin: 0.75em 0 0.35em;
+  font-size: 1rem;
+}
+
+#reviewer-tech-analysis-panel .reviewer-style-table {
+  table-layout: fixed;
+}
+
+#reviewer-tech-analysis-panel .reviewer-style-fan-scroll {
+  max-height: 42em;
+  overflow-y: auto;
+}
+
+#reviewer-tech-analysis-panel .reviewer-style-metric-label {
+  width: 9em;
+}
+
+#reviewer-tech-analysis-panel .reviewer-style-metric-value {
+  width: 6em;
+}
+
+#reviewer-tech-analysis-panel .reviewer-style-metric-bar-cell {
+  width: auto;
+}
+
+#reviewer-tech-analysis-panel .reviewer-style-bar-wrap {
+  position: relative;
+  width: 100%;
+  height: 20px;
+  border-radius: 3px;
+  background: #f8f9fa;
+  overflow: hidden;
+}
+
+#reviewer-tech-analysis-panel .reviewer-style-bar-zero {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #6c757d;
+  opacity: 0.6;
+  z-index: 1;
+}
+
+#reviewer-tech-analysis-panel .reviewer-style-bar-fill {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  border-radius: 2px;
+  z-index: 2;
+}
+
+#reviewer-tech-analysis-panel .reviewer-style-bar-label {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  font-weight: 600;
+  z-index: 3;
+}
+
+#reviewer-tech-analysis-panel .reviewer-style-bar-label-left {
+  right: auto;
+  left: 6px;
+}
