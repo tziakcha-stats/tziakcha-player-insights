@@ -29,6 +29,9 @@ interface MatchCandidate {
 const ANALYSIS_PANEL_ID = "reviewer-tech-analysis-panel";
 const TAB_ANALYSIS_ID = "reviewer-tech-tab-analysis";
 const FAN_GROUP_TAB_ID = "reviewer-style-fan-group-tabs";
+const FAN_FILTER_RARE_BTN_ID = "reviewer-style-fan-filter-rare";
+const FAN_FILTER_LARGE_DIFF_BTN_ID = "reviewer-style-fan-filter-large-diff";
+const FAN_SORT_MODE_BTN_ID = "reviewer-style-fan-sort-mode";
 const SELF_PLAYER_SENTINEL = "__self__";
 
 let initialized = false;
@@ -38,6 +41,9 @@ let fanRowsAll: FanDiffRow[] = [];
 let currentFanGroup: FanGroup = "all";
 let playerAName = "";
 let playerBName = "";
+let hideRareFans = true;
+let onlyLargeDiffFans = false;
+let sortByAbsDiff = false;
 
 function toNumber(value: unknown): number {
   const n = Number(value);
@@ -496,6 +502,11 @@ function ensureAnalysisPanel(): HTMLElement | null {
       </table>
 
       <h5 class="reviewer-style-subtitle">番种比较</h5>
+      <div class="reviewer-style-fan-actions">
+        <button id="${FAN_FILTER_RARE_BTN_ID}" type="button" class="reviewer-style-toggle-btn is-active">不显示稀有番种</button>
+        <button id="${FAN_FILTER_LARGE_DIFF_BTN_ID}" type="button" class="reviewer-style-toggle-btn">仅显示大差异番种</button>
+        <button id="${FAN_SORT_MODE_BTN_ID}" type="button" class="reviewer-style-toggle-btn">排序：差值</button>
+      </div>
       <ul class="nav nav-tabs reviewer-style-subtabs" id="${FAN_GROUP_TAB_ID}">
         <li class="nav-item"><a class="nav-link active" href="javascript:void(0)" data-fan-group="all">全部番种</a></li>
         <li class="nav-item"><a class="nav-link" href="javascript:void(0)" data-fan-group="small">小番(<=2)</a></li>
@@ -715,11 +726,83 @@ function renderTopDiffRows(rows: FanDiffRow[]): void {
 
 function renderCurrentTopDiff(): void {
   const grouped = filterFanDiffRowsByGroup(fanRowsAll, currentFanGroup);
-  renderTopDiffRows(
-    [...grouped].sort(
-      (left, right) => Math.abs(right.diffPct) - Math.abs(left.diffPct),
-    ),
-  );
+
+  const filtered = grouped.filter((row) => {
+    if (hideRareFans && row.rateA < 0.5 && row.rateB < 0.5) {
+      return false;
+    }
+    if (onlyLargeDiffFans && Math.abs(row.diffPct) <= 1) {
+      return false;
+    }
+    return true;
+  });
+
+  const sorted = [...filtered].sort((left, right) => {
+    if (sortByAbsDiff) {
+      return Math.abs(right.diffPct) - Math.abs(left.diffPct);
+    }
+    return right.diffPct - left.diffPct;
+  });
+
+  renderTopDiffRows(sorted);
+}
+
+function updateFanActionButtonsState(): void {
+  const rareBtn = document.getElementById(FAN_FILTER_RARE_BTN_ID);
+  const largeDiffBtn = document.getElementById(FAN_FILTER_LARGE_DIFF_BTN_ID);
+  const sortBtn = document.getElementById(FAN_SORT_MODE_BTN_ID);
+
+  if (rareBtn) {
+    rareBtn.classList.toggle("is-active", hideRareFans);
+  }
+  if (largeDiffBtn) {
+    largeDiffBtn.classList.toggle("is-active", onlyLargeDiffFans);
+  }
+  if (sortBtn) {
+    sortBtn.classList.toggle("is-active", sortByAbsDiff);
+    sortBtn.textContent = sortByAbsDiff ? "排序：绝对值" : "排序：差值";
+  }
+}
+
+function bindFanActionButtons(): void {
+  const rareBtn = document.getElementById(
+    FAN_FILTER_RARE_BTN_ID,
+  ) as HTMLButtonElement | null;
+  const largeDiffBtn = document.getElementById(
+    FAN_FILTER_LARGE_DIFF_BTN_ID,
+  ) as HTMLButtonElement | null;
+  const sortBtn = document.getElementById(
+    FAN_SORT_MODE_BTN_ID,
+  ) as HTMLButtonElement | null;
+
+  if (rareBtn && !rareBtn.dataset.bound) {
+    rareBtn.dataset.bound = "1";
+    rareBtn.addEventListener("click", () => {
+      hideRareFans = !hideRareFans;
+      updateFanActionButtonsState();
+      renderCurrentTopDiff();
+    });
+  }
+
+  if (largeDiffBtn && !largeDiffBtn.dataset.bound) {
+    largeDiffBtn.dataset.bound = "1";
+    largeDiffBtn.addEventListener("click", () => {
+      onlyLargeDiffFans = !onlyLargeDiffFans;
+      updateFanActionButtonsState();
+      renderCurrentTopDiff();
+    });
+  }
+
+  if (sortBtn && !sortBtn.dataset.bound) {
+    sortBtn.dataset.bound = "1";
+    sortBtn.addEventListener("click", () => {
+      sortByAbsDiff = !sortByAbsDiff;
+      updateFanActionButtonsState();
+      renderCurrentTopDiff();
+    });
+  }
+
+  updateFanActionButtonsState();
 }
 
 function setSelectOptions(
@@ -982,6 +1065,7 @@ export function initTechAnalysis(): void {
   bindTabToggle();
   initPlayerInputs();
   bindFanSubTabs();
+  bindFanActionButtons();
   bindCompareActions();
 
   initialized = true;

@@ -228,6 +228,21 @@ describe("tech analysis tab and style compare ui", () => {
     );
     expect(fanGroupTabs.length).toBe(4);
 
+    const rareFilterBtn = document.getElementById(
+      "reviewer-style-fan-filter-rare",
+    ) as HTMLButtonElement;
+    const largeDiffBtn = document.getElementById(
+      "reviewer-style-fan-filter-large-diff",
+    ) as HTMLButtonElement;
+    const sortBtn = document.getElementById(
+      "reviewer-style-fan-sort-mode",
+    ) as HTMLButtonElement;
+    expect(rareFilterBtn.textContent).toContain("不显示稀有番种");
+    expect(largeDiffBtn.textContent).toContain("仅显示大差异番种");
+    expect(sortBtn.textContent).toContain("排序：差值");
+    expect(rareFilterBtn.classList.contains("is-active")).toBe(true);
+    expect(largeDiffBtn.classList.contains("is-active")).toBe(false);
+
     expect(document.body.textContent).toContain("小番(<=2)");
     expect(document.body.textContent).toContain("主番(4~32)");
     expect(document.body.textContent).toContain("大牌(>=48)");
@@ -281,5 +296,139 @@ describe("tech analysis tab and style compare ui", () => {
       ?.parentElement?.querySelector(".reviewer-style-head-b");
     expect(topHeadA?.textContent).toContain("当前玩家");
     expect(topHeadB?.textContent).toContain("对手B");
+  });
+
+  it("supports rare/large-diff filters and diff/abs sorting for fan rows", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/_qry/user/tech/?id=SELF01")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              fan: {
+                c0: 1000,
+                d0: 0,
+                c29: 30,
+                c61: 10,
+                c71: 20,
+                c50: 8,
+                c49: 4,
+              },
+              basic: {},
+              cycle: {},
+              point: {},
+            }),
+          } as Response;
+        }
+        if (url.includes("/_qry/user/tech/?id=U2")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              fan: {
+                c0: 1000,
+                d0: 0,
+                c29: 10,
+                c61: 0,
+                c71: 50,
+                c50: 2,
+                c49: 3,
+              },
+              basic: {},
+              cycle: {},
+              point: {},
+            }),
+          } as Response;
+        }
+        if (url.includes("/_qry/match/")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => [
+              { n: "当前玩家", i: "SELF01" },
+              { n: "对手B", i: "U2" },
+            ],
+          } as Response;
+        }
+        throw new Error("unexpected fetch");
+      }),
+    );
+
+    const { initTechFeature } = await import("../../src/features/tech");
+    initTechFeature(window.location.href);
+    await flush();
+    await flush();
+
+    const analysisTab = Array.from(
+      document.querySelectorAll("#top-tabs .nav-link"),
+    ).find((item) => item.textContent?.trim() === "分析") as HTMLAnchorElement;
+    analysisTab.click();
+
+    const keywordB = document.getElementById(
+      "reviewer-style-player-b-keyword",
+    ) as HTMLInputElement;
+    keywordB.value = "对手";
+    keywordB.dispatchEvent(new Event("input"));
+    await flush();
+
+    const selectB = document.getElementById(
+      "reviewer-style-player-b-select",
+    ) as HTMLSelectElement;
+    selectB.innerHTML =
+      '<option value="">--请选择--</option><option value="U2" data-name="对手B">对手B</option>';
+    selectB.selectedIndex = 1;
+    selectB.dispatchEvent(new Event("change"));
+
+    const compareBtn = document.getElementById(
+      "reviewer-style-compare-run",
+    ) as HTMLButtonElement;
+    compareBtn.click();
+    await flush();
+    await flush();
+
+    const topTbody = document.getElementById(
+      "reviewer-style-fan-diff-tbody",
+    ) as HTMLElement;
+
+    const rowFanNames = () =>
+      Array.from(topTbody.querySelectorAll("tr > td:first-child")).map((cell) =>
+        (cell.textContent || "").trim(),
+      );
+
+    // Default: rare fan hidden and sort by signed diff descending.
+    expect(rowFanNames()).not.toContain("抢杠和");
+    expect(rowFanNames()[0]).toBe("清龙");
+
+    const largeDiffBtn = document.getElementById(
+      "reviewer-style-fan-filter-large-diff",
+    ) as HTMLButtonElement;
+    largeDiffBtn.click();
+    await flush();
+
+    const afterLargeDiff = rowFanNames();
+    expect(afterLargeDiff).toContain("清龙");
+    expect(afterLargeDiff).toContain("一般高");
+    expect(afterLargeDiff).not.toContain("箭刻");
+    expect(afterLargeDiff).not.toContain("碰碰和");
+
+    const sortBtn = document.getElementById(
+      "reviewer-style-fan-sort-mode",
+    ) as HTMLButtonElement;
+    sortBtn.click();
+    await flush();
+
+    const afterAbsSort = rowFanNames();
+    expect(afterAbsSort[0]).toBe("一般高");
+
+    const rareBtn = document.getElementById(
+      "reviewer-style-fan-filter-rare",
+    ) as HTMLButtonElement;
+    rareBtn.click();
+    await flush();
+
+    expect(rowFanNames()).toContain("抢杠和");
   });
 });
