@@ -429,6 +429,10 @@ describe("tech analysis tab and style compare ui", () => {
     rareBtn.click();
     await flush();
 
+    // Turn off large-diff filter first, otherwise small-diff rare rows remain hidden.
+    largeDiffBtn.click();
+    await flush();
+
     expect(rowFanNames()).toContain("抢杠和");
   });
 });
