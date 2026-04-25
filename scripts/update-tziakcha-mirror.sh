@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_URL="https://github.com/Choimoe/tziakcha-player-insights.git"
+REPO_URL="https://github.com/tziakcha-stats/tziakcha-player-insights.git"
 DOCS_BRANCH="docs/dev-wiki"
 ASSET_BRANCH="preview-dist"
 REPO_DIR="/var/www/web/tziakcha-mirror-repo"

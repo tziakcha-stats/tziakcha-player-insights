@@ -93,7 +93,7 @@
 
     ---
 
-    查看仓库和源码：<a href="https://github.com/Choimoe/tziakcha-player-insights"><img src="https://img.shields.io/badge/GitHub-%E6%BA%90%E4%BB%A3%E7%A0%81%E4%BB%93%E5%BA%93-181717?style=for-the-badge&logo=github&logoColor=white"></a>
+    查看仓库和源码：<a href="https://github.com/tziakcha-stats/tziakcha-player-insights"><img src="https://img.shields.io/badge/GitHub-%E6%BA%90%E4%BB%A3%E7%A0%81%E4%BB%93%E5%BA%93-181717?style=for-the-badge&logo=github&logoColor=white"></a>
 
 </div>
 
