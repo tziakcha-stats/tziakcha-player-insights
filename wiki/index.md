@@ -73,4 +73,28 @@
 
 ![dev mode](assets/img/userdev.png)
 
-接着访问 <a href="https://greasyfork.org/zh-CN/scripts/569766"><img src="https://img.shields.io/badge/Greasy%20Fork-569766-grey.svg?colorA=900000&style=for-the-badge"></a> 安装脚本（或直接从本仓库下载/复制 <a href="https://tziakcha-stats.github.io/tziakcha-player-insights/index.prod.user.js"><img src="https://img.shields.io/badge/Github-181717?style=for-the-badge&logo=github&logoColor=white"></a>）。脚本会在雀渣页面（`https://tziakcha.net/*`）自动启用。
+安装入口：
+
+<div class="grid cards" markdown>
+
+-   :material-server-network:{ .lg .middle } 国内镜像源
+
+    ---
+
+    适合中国大陆网络环境，直接安装：<a href="https://web.choimoe.com/tziakcha/index.prod.user.js"><img src="https://img.shields.io/badge/%E5%9B%BD%E5%86%85%E9%95%9C%E5%83%8F-2F855A?style=for-the-badge&logoColor=white"></a>
+
+-   :material-download:{ .lg .middle } GreasyFork
+
+    ---
+
+    从脚本平台安装：<a href="https://greasyfork.org/zh-CN/scripts/569766"><img src="https://img.shields.io/badge/Greasy%20Fork-569766-grey.svg?colorA=900000&style=for-the-badge"></a>
+
+-   :material-github:{ .lg .middle } 源代码仓库
+
+    ---
+
+    从源码仓库获取脚本：<a href="https://tziakcha-stats.github.io/tziakcha-player-insights/index.prod.user.js"><img src="https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white"></a>
+
+</div>
+
+脚本会在雀渣页面（`https://tziakcha.net/*`）自动启用。
