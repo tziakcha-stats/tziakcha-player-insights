@@ -8,6 +8,8 @@ docs_dir: wiki
 theme:
   name: material
   language: zh
+  favicon: assets/img/icon.png
+  logo: assets/img/icon.png
   features:
     - navigation.tabs
     - navigation.top

@@ -14,7 +14,7 @@
 
     查看用户和用户之间各项数据的对比
 
-    ![comp](https://cdn.jsdelivr.net/gh/tziakcha-stats/tziakcha-player-insights/docs/img/comp.png)
+    ![comp](assets/img/comp.png)
 
 -   :material-calculator:{ .lg .middle } __CHAGA复盘分析__
 
@@ -22,7 +22,7 @@
 
     使用 CHAGA 的看谱 API，在牌谱回放页显示 CHAGA 推荐的候选打法和权重评分
 
-    ![reviewer](https://cdn.jsdelivr.net/gh/tziakcha-stats/tziakcha-player-insights/docs/img/reviewer.png)
+    ![reviewer](assets/img/reviewer.png)
 
 -   :material-home:{ .lg .middle } __一键家访__
 
@@ -30,7 +30,7 @@
 
     能够在牌谱界面直达对方主页，查询对方信息 (需要开启雀渣会员 :material-star:)
 
-    ![homepage](https://cdn.jsdelivr.net/gh/tziakcha-stats/tziakcha-player-insights/docs/img/homepage.png)
+    ![homepage](assets/img/homepage.png)
 
 -   :material-content-save:{ .lg .middle } __本地收藏__
 
@@ -38,7 +38,7 @@
 
     可以牌谱和小局页面直接保存内容，在收藏页管理标签、备注，并执行导入导出
 
-    ![favorites](https://cdn.jsdelivr.net/gh/tziakcha-stats/tziakcha-player-insights/docs/img/favorites.png)
+    ![favorites](assets/img/favorites.png)
 
 </div>
 
@@ -69,8 +69,32 @@
 
 请注意：脚本需要开启插件界面 / 设置界面的 **开发人员模式**，然后在 **插件的设置** 中打开 **站点访问权限和相关使用权限**，否则会无法读取界面信息导致失效。
 
-![dev mode](https://cdn.jsdelivr.net/gh/tziakcha-stats/tziakcha-player-insights/docs/img/devmode.png)
+![dev mode](assets/img/devmode.png)
 
-![dev mode](https://cdn.jsdelivr.net/gh/tziakcha-stats/tziakcha-player-insights/docs/img/userdev.png)
+![dev mode](assets/img/userdev.png)
 
-接着访问 <a href="https://greasyfork.org/zh-CN/scripts/569766"><img src="https://img.shields.io/badge/Greasy%20Fork-569766-grey.svg?colorA=900000&style=for-the-badge"></a> 安装脚本（或直接从本仓库下载/复制 <a href="https://tziakcha-stats.github.io/tziakcha-player-insights/index.prod.user.js"><img src="https://img.shields.io/badge/Github-181717?style=for-the-badge&logo=github&logoColor=white"></a>）。脚本会在雀渣页面（`https://tziakcha.net/*`）自动启用。
+安装入口：
+
+<div class="grid cards" markdown>
+
+-   :material-server-network:{ .lg .middle } 国内镜像源
+
+    ---
+
+    适合中国大陆网络环境，直接安装：<a href="https://web.choimoe.com/tziakcha/index.prod.user.js"><img src="https://img.shields.io/badge/%E5%9B%BD%E5%86%85%E9%95%9C%E5%83%8F-2F855A?style=for-the-badge&logoColor=white"></a>
+
+-   :material-download:{ .lg .middle } GreasyFork
+
+    ---
+
+    从脚本平台安装：<a href="https://greasyfork.org/zh-CN/scripts/569766"><img src="https://img.shields.io/badge/Greasy%20Fork-569766-grey.svg?colorA=900000&style=for-the-badge"></a>
+
+-   :material-github:{ .lg .middle } 源代码仓库
+
+    ---
+
+    查看仓库和源码：<a href="https://github.com/Choimoe/tziakcha-player-insights"><img src="https://img.shields.io/badge/GitHub-%E6%BA%90%E4%BB%A3%E7%A0%81%E4%BB%93%E5%BA%93-181717?style=for-the-badge&logo=github&logoColor=white"></a>
+
+</div>
+
+脚本会在雀渣页面（`https://tziakcha.net/*`）自动启用。
