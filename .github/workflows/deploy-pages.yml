@@ -1,4 +1,4 @@
-name: Deploy README to GitHub Pages
+name: Deploy docs to GitHub Pages
 
 on:
   push:
@@ -6,9 +6,9 @@ on:
       - master
       - main
     paths:
-      - 'readme.md'
-      - 'readme.cn.md'
-      - 'docs/**'
+      - 'wiki/**'
+      - 'mkdocs.yml'
+      - 'requirements-docs.txt'
       - 'src/**'
       - 'config/**'
       - 'package.json'
@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -45,6 +45,11 @@ jobs:
           node-version: "lts/*"
           cache: "npm"
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Build userscript
         run: |
           npm ci
@@ -53,73 +58,25 @@ jobs:
       - name: Validate userscript build output
         run: test -f dist/index.prod.user.js
 
-      - name: Create HTML from README
+      - name: Install docs dependencies
         run: |
-          mkdir -p _site _site/preview
+          python -m pip install --upgrade pip
+          pip install -r wiki/requirements.txt
 
-          README_SOURCE="readme.md"
-          if [ ! -f "$README_SOURCE" ]; then
-            README_SOURCE="readme.cn.md"
-          fi
+      - name: Build MkDocs site
+        run: mkdocs build --strict
 
-          if [ ! -f "$README_SOURCE" ]; then
-            echo "No readme file found (readme.cn.md/readme.md)."
-            exit 1
-          fi
-          
-          cat > _site/index.html << 'EOF'
-          <!DOCTYPE html>
-          <html lang="zh-CN">
-          <head>
-              <meta charset="UTF-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>雀渣用户高级分析工具</title>
-              <link rel="icon" type="image/png" href="docs/img/icon.png">
-              <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.0/github-markdown.min.css">
-              <style>
-                  body {
-                      box-sizing: border-box;
-                      min-width: 200px;
-                      max-width: 980px;
-                      margin: 0 auto;
-                      padding: 45px;
-                      background-color: #0d1117;
-                  }
-                  .markdown-body {
-                      background-color: #0d1117;
-                      color: #c9d1d9;
-                  }
-                  .markdown-body img {
-                      background-color: transparent;
-                  }
-              </style>
-              <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-          </head>
-          <body>
-              <article class="markdown-body" id="content"></article>
-              <script>
-                  fetch('README.md')
-                      .then(response => response.text())
-                      .then(text => {
-                          document.getElementById('content').innerHTML = marked.parse(text);
-                      });
-              </script>
-          </body>
-          </html>
-          EOF
-          
-          cp "$README_SOURCE" _site/README.md
-          if [ -d "docs" ]; then
-            cp -r docs _site/
-          fi
-          cp dist/index.prod.user.js _site/index.prod.user.js
-            cp dist/index.prod.user.js _site/preview/index.prod.user.js
-          touch _site/.nojekyll
+      - name: Attach userscript assets
+        run: |
+          mkdir -p site/preview
+          cp dist/index.prod.user.js site/index.prod.user.js
+          cp dist/index.prod.user.js site/preview/index.prod.user.js
+          touch site/.nojekyll
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: ./_site
+          path: ./site
 
       - name: Deploy to GitHub Pages
         id: deployment

@@ -1,0 +1,73 @@
+site_name: 雀渣用户高级分析工具 Wiki
+site_description: 面向贡献者的开发文档站
+site_url: https://tziakcha-stats.github.io/tziakcha-player-insights/
+repo_url: https://github.com/tziakcha-stats/tziakcha-player-insights
+repo_name: tziakcha-stats/tziakcha-player-insights
+docs_dir: wiki
+
+theme:
+  name: material
+  language: zh
+  features:
+    - navigation.tabs
+    - navigation.top
+    - content.code.copy
+    - content.tabs.link
+    - search.highlight
+    - search.suggest
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: 切换到亮色模式
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue grey
+      accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: 切换到暗色模式
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue grey
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: 切换到跟随系统
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+nav:
+  - 首页: index.md
+  - 数据结构:
+      - 概览: data/index.md
+      - 收藏数据: data/favorites.md
+      - 牌局分析数据: data/game.md
+      - 运行时上下文: data/runtime.md
+  - 模块文档:
+      - 架构总览: modules/index.md
+      - favorites: modules/favorites.md
+      - game: modules/game.md
+      - record: modules/record.md
+      - 其余模块: modules/support.md
+  - 开发指南:
+      - 概览: dev/index.md

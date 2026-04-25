@@ -42,4 +42,5 @@ settings.py.example
 .ipynb_checkpoints/
 
 node_modules/
+.worktrees/
 src/python/record/data/**/*.json
