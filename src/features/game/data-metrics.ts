@@ -1,8 +1,11 @@
 import { fetchSessionData } from "../../shared/session-data";
+import {
+  extractTziakchaRoundWinInfos,
+  TziakchaSessionRounds,
+} from "../../shared/tziakcha-records";
 import { ReviewResponseItem } from "../record/reviewer/types";
 import { calcChagaScore, choiceMatchesAi } from "./chaga-score";
 import { fetchAiResponse } from "./chaga-data";
-import { parseWinFanItems } from "./win-info";
 import { extractChoices } from "./step-simulator";
 import { fetchStepData, StepData } from "./step-data";
 import {
@@ -66,76 +69,40 @@ export function computeRoundOutcomes(
   steps: StepData[],
   playerMetrics?: PlayerMetric[],
 ): RoundOutcome[] {
-  const rounds: RoundOutcome[] = [];
+  const session: TziakchaSessionRounds = {
+    sessionId: "",
+    players: sessionPlayerNames.map((name) => ({ name })),
+    records: steps.map((step, index) => ({
+      id: String(index),
+      index,
+      step,
+    })),
+    periods: steps.length,
+    isFinished: true,
+  };
 
-  steps.forEach((stepData, roundNo) => {
-    const seatToPlayerOrder = getSeatToPlayerOrder(roundNo);
-    const resultBits = typeof stepData.b === "number" ? stepData.b : 0;
-    const winnerMask = resultBits & 0x0f;
-    const discarderMask = (resultBits >> 4) & 0x0f;
-    if (!winnerMask) {
-      return;
-    }
-
-    const winnerDetails: RoundOutcome["winners"] = [];
-    for (let stepSeat = 0; stepSeat < 4; stepSeat += 1) {
-      if (((winnerMask >> stepSeat) & 1) === 0) {
-        continue;
-      }
-
-      const aiSeat = seatToPlayerOrder[stepSeat] ?? -1;
-      if (aiSeat < 0) {
-        continue;
-      }
-
-      const seatY = Array.isArray(stepData.y) ? stepData.y[stepSeat] : null;
-      const fanItems = parseWinFanItems(seatY?.t);
-      const totalFan =
-        typeof seatY?.f === "number"
-          ? seatY.f
-          : fanItems.reduce((sum, item) => sum + item.totalFan, 0);
-
-      if (playerMetrics && playerMetrics[aiSeat]) {
-        playerMetrics[aiSeat].winRounds.push({
-          roundNo: roundNo + 1,
-          totalFan,
-          fanItems,
+  return extractTziakchaRoundWinInfos(session).map((round) => {
+    round.winners.forEach((winner) => {
+      if (playerMetrics && playerMetrics[winner.playerIndex]) {
+        playerMetrics[winner.playerIndex].winRounds.push({
+          roundNo: round.roundNo,
+          totalFan: winner.totalFan,
+          fanItems: winner.fanItems,
         });
       }
-
-      winnerDetails.push({
-        playerName: sessionPlayerNames[aiSeat] || `Seat ${aiSeat}`,
-        totalFan,
-        fanItems,
-      });
-    }
-
-    const discarderNames: string[] = [];
-    for (let stepSeat = 0; stepSeat < 4; stepSeat += 1) {
-      if (((discarderMask >> stepSeat) & 1) === 0) {
-        continue;
-      }
-
-      const aiSeat = seatToPlayerOrder[stepSeat] ?? -1;
-      if (aiSeat < 0) {
-        continue;
-      }
-      discarderNames.push(sessionPlayerNames[aiSeat] || `Seat ${aiSeat}`);
-    }
-
-    rounds.push({
-      roundNo: roundNo + 1,
-      winners: winnerDetails,
-      discarderNames,
-      selfDraw:
-        discarderNames.length === 0 ||
-        discarderNames.every((name) =>
-          winnerDetails.some((winner) => winner.playerName === name),
-        ),
     });
-  });
 
-  return rounds;
+    return {
+      roundNo: round.roundNo,
+      winners: round.winners.map((winner) => ({
+        playerName: winner.playerName,
+        totalFan: winner.totalFan,
+        fanItems: winner.fanItems,
+      })),
+      discarderNames: round.discarders.map((discarder) => discarder.playerName),
+      selfDraw: round.selfDraw,
+    };
+  });
 }
 
 export async function computeMetrics(
