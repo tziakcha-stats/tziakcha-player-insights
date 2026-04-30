@@ -1901,7 +1901,83 @@ function mountGameFavoriteEntry(repository = createFavoritesRepository()) {
     return true;
 }
 
-;// ./src/shared/session-data.ts
+;// ./src/shared/tziakcha-records/record.ts
+
+function getFetch(options) {
+    return options?.fetch ?? fetch;
+}
+function buildUrl(path, options) {
+    return options?.baseUrl ? new URL(path, options.baseUrl).toString() : path;
+}
+function base64ToBytes(input) {
+    const binary = atob(input);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {
+        bytes[index] = binary.charCodeAt(index);
+    }
+    return bytes;
+}
+async function decompressZlibBase64(input) {
+    const streamCtor = w.DecompressionStream;
+    if (!streamCtor) {
+        throw new Error("当前浏览器不支持 DecompressionStream");
+    }
+    const bytes = base64ToBytes(input);
+    const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    const source = new Blob([buffer]).stream();
+    const decompressed = source.pipeThrough(new streamCtor("deflate"));
+    return await new Response(decompressed).text();
+}
+async function fetchTziakchaRecordStep(recordId, options) {
+    const response = await getFetch(options)(buildUrl("/_qry/record/", options), {
+        method: "POST",
+        headers: {
+            "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+        },
+        body: new URLSearchParams({ id: recordId }).toString(),
+    });
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status} for /_qry/record/`);
+    }
+    const raw = (await response.json());
+    if (typeof raw.script !== "string" || !raw.script) {
+        throw new Error(`record ${recordId} 缺少 script`);
+    }
+    const decode = options?.decompressZlibBase64 ?? decompressZlibBase64;
+    const jsonText = await decode(raw.script);
+    return JSON.parse(jsonText);
+}
+
+;// ./src/shared/tziakcha-records/rounds.ts
+/* unused harmony import specifier */ var rounds_fetchTziakchaRecordStep;
+/* unused harmony import specifier */ var fetchTziakchaSession;
+/* unused harmony import specifier */ var parseTziakchaSessionId;
+
+
+
+async function fetchTziakchaSessionRounds(inputUrlOrId, options) {
+    const sessionId = parseTziakchaSessionId(inputUrlOrId);
+    if (!sessionId) {
+        throw new Error("无法从输入中解析雀渣对局 id");
+    }
+    const session = await fetchTziakchaSession(sessionId, options);
+    const records = await Promise.all(session.records.map(async (record) => ({
+        ...record,
+        step: await rounds_fetchTziakchaRecordStep(record.id, options),
+    })));
+    return {
+        ...session,
+        records,
+    };
+}
+
+;// ./src/shared/tziakcha-records/session.ts
+function session_getFetch(options) {
+    return options?.fetch ?? fetch;
+}
+function session_buildUrl(path, options) {
+    return options?.baseUrl ? new URL(path, options.baseUrl).toString() : path;
+}
 function asNumber(value) {
     if (typeof value === "number" && Number.isFinite(value)) {
         return value;
@@ -1912,7 +1988,7 @@ function asNumber(value) {
     }
     return null;
 }
-function extractSessionPlayers(raw) {
+function extractPlayers(raw) {
     if (!Array.isArray(raw.players)) {
         return [];
     }
@@ -1924,20 +2000,19 @@ function extractSessionPlayers(raw) {
         };
     });
 }
-function extractSessionRecords(raw) {
+function extractRecords(raw) {
     if (!Array.isArray(raw.records)) {
         return [];
     }
     return raw.records
-        .map((item) => {
+        .map((item, index) => {
         const record = item;
         const id = record.id || record.i;
-        return id ? { id } : null;
+        return id ? { id, index } : null;
     })
         .filter((item) => Boolean(item));
 }
-function isSessionFinished(raw, records) {
-    const periods = asNumber(raw.periods);
+function isFinished(raw, records, periods) {
     if (periods !== null && periods > 0) {
         return records.length === periods;
     }
@@ -1954,8 +2029,8 @@ function isSessionFinished(raw, records) {
     }
     return false;
 }
-async function fetchSessionData(sessionId) {
-    const response = await fetch(`/_qry/game/?id=${encodeURIComponent(sessionId)}`, {
+async function session_fetchTziakchaSession(sessionId, options) {
+    const response = await session_getFetch(options)(session_buildUrl(`/_qry/game/?id=${encodeURIComponent(sessionId)}`, options), {
         method: "POST",
         credentials: "include",
     });
@@ -1963,11 +2038,245 @@ async function fetchSessionData(sessionId) {
         throw new Error(`HTTP ${response.status} for /_qry/game/`);
     }
     const raw = (await response.json());
-    const records = extractSessionRecords(raw);
+    const records = extractRecords(raw);
+    const periods = asNumber(raw.periods);
     return {
-        players: extractSessionPlayers(raw),
+        sessionId,
+        players: extractPlayers(raw),
         records,
-        isFinished: isSessionFinished(raw, records),
+        periods,
+        isFinished: isFinished(raw, records, periods),
+    };
+}
+
+;// ./src/shared/tziakcha-records/win-info.ts
+const FAN_NAMES = [
+    "无",
+    "大四喜",
+    "大三元",
+    "绿一色",
+    "九莲宝灯",
+    "四杠",
+    "连七对",
+    "十三幺",
+    "清幺九",
+    "小四喜",
+    "小三元",
+    "字一色",
+    "四暗刻",
+    "一色双龙会",
+    "一色四同顺",
+    "一色四节高",
+    "一色四步高",
+    "一色四连环",
+    "三杠",
+    "混幺九",
+    "七对",
+    "七星不靠",
+    "全双刻",
+    "清一色",
+    "一色三同顺",
+    "一色三节高",
+    "全大",
+    "全中",
+    "全小",
+    "清龙",
+    "三色双龙会",
+    "一色三步高",
+    "一色三连环",
+    "全带五",
+    "三同刻",
+    "三暗刻",
+    "全不靠",
+    "组合龙",
+    "大于五",
+    "小于五",
+    "三风刻",
+    "花龙",
+    "推不倒",
+    "三色三同顺",
+    "三色三节高",
+    "无番和",
+    "妙手回春",
+    "海底捞月",
+    "杠上开花",
+    "抢杠和",
+    "碰碰和",
+    "混一色",
+    "三色三步高",
+    "五门齐",
+    "全求人",
+    "双暗杠",
+    "双箭刻",
+    "全带幺",
+    "不求人",
+    "双明杠",
+    "和绝张",
+    "箭刻",
+    "圈风刻",
+    "门风刻",
+    "门前清",
+    "平和",
+    "四归一",
+    "双同刻",
+    "双暗刻",
+    "暗杠",
+    "断幺",
+    "一般高",
+    "喜相逢",
+    "连六",
+    "老少副",
+    "幺九刻",
+    "明杠",
+    "缺一门",
+    "无字",
+    "独听・边张",
+    "独听・嵌张",
+    "独听・单钓",
+    "自摸",
+    "花牌",
+    "明暗杠",
+    "※ 天和",
+    "※ 地和",
+    "※ 人和Ⅰ",
+    "※ 人和Ⅱ",
+];
+const TZIACKHA_SEAT_TO_PLAYER_ORDER = [
+    [0, 1, 2, 3],
+    [1, 2, 3, 0],
+    [2, 3, 0, 1],
+    [3, 0, 1, 2],
+    [1, 0, 3, 2],
+    [0, 3, 2, 1],
+    [3, 2, 1, 0],
+    [2, 1, 0, 3],
+    [2, 3, 1, 0],
+    [3, 1, 0, 2],
+    [1, 0, 2, 3],
+    [0, 2, 3, 1],
+    [3, 2, 0, 1],
+    [2, 0, 1, 3],
+    [0, 1, 3, 2],
+    [1, 3, 2, 0],
+];
+function toNumber(value) {
+    if (typeof value === "number" && Number.isFinite(value)) {
+        return value;
+    }
+    if (typeof value === "string") {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+}
+function parseTziakchaWinFanItems(rawT) {
+    if (!rawT || typeof rawT !== "object") {
+        return [];
+    }
+    return Object.entries(rawT)
+        .map(([fanIndexRaw, encodedRaw]) => {
+        const fanIndex = toNumber(fanIndexRaw);
+        const encoded = toNumber(encodedRaw);
+        if (fanIndex === null || encoded === null) {
+            return null;
+        }
+        const fanIndexInt = Math.floor(fanIndex);
+        const encodedInt = Math.floor(encoded);
+        const unitFan = encodedInt & 0xff;
+        const count = (encodedInt >> 8) + 1;
+        const fanName = FAN_NAMES[fanIndexInt] || `番种${fanIndexInt}`;
+        return {
+            fanIndex: fanIndexInt,
+            fanName,
+            count,
+            unitFan,
+            totalFan: unitFan * count,
+        };
+    })
+        .filter((item) => Boolean(item))
+        .sort((left, right) => left.fanIndex - right.fanIndex);
+}
+function getSeatToPlayerOrder(roundNo) {
+    return (TZIACKHA_SEAT_TO_PLAYER_ORDER[((roundNo % TZIACKHA_SEAT_TO_PLAYER_ORDER.length) +
+        TZIACKHA_SEAT_TO_PLAYER_ORDER.length) %
+        TZIACKHA_SEAT_TO_PLAYER_ORDER.length] || [0, 1, 2, 3]);
+}
+function getPlayerName(session, playerIndex) {
+    return session.players[playerIndex]?.name || `Seat ${playerIndex}`;
+}
+function extractTziakchaRoundWinInfos(session) {
+    const rounds = [];
+    session.records.forEach((record) => {
+        const stepData = record.step;
+        const resultBits = typeof stepData.b === "number" ? stepData.b : 0;
+        const winnerMask = resultBits & 0x0f;
+        const discarderMask = (resultBits >> 4) & 0x0f;
+        if (!winnerMask) {
+            return;
+        }
+        const seatToPlayerOrder = getSeatToPlayerOrder(record.index);
+        const winners = [];
+        for (let stepSeat = 0; stepSeat < 4; stepSeat += 1) {
+            if (((winnerMask >> stepSeat) & 1) === 0) {
+                continue;
+            }
+            const playerIndex = seatToPlayerOrder[stepSeat] ?? -1;
+            if (playerIndex < 0) {
+                continue;
+            }
+            const seatY = Array.isArray(stepData.y) ? stepData.y[stepSeat] : null;
+            const fanItems = parseTziakchaWinFanItems(seatY?.t);
+            const totalFan = typeof seatY?.f === "number"
+                ? seatY.f
+                : fanItems.reduce((sum, item) => sum + item.totalFan, 0);
+            winners.push({
+                playerName: getPlayerName(session, playerIndex),
+                playerIndex,
+                totalFan,
+                fanItems,
+            });
+        }
+        const discarders = [];
+        for (let stepSeat = 0; stepSeat < 4; stepSeat += 1) {
+            if (((discarderMask >> stepSeat) & 1) === 0) {
+                continue;
+            }
+            const playerIndex = seatToPlayerOrder[stepSeat] ?? -1;
+            if (playerIndex < 0) {
+                continue;
+            }
+            discarders.push({
+                playerName: getPlayerName(session, playerIndex),
+                playerIndex,
+            });
+        }
+        rounds.push({
+            roundNo: record.index + 1,
+            recordId: record.id,
+            winners,
+            discarders,
+            selfDraw: discarders.length === 0 ||
+                discarders.every((discarder) => winners.some((winner) => winner.playerIndex === discarder.playerIndex)),
+        });
+    });
+    return rounds;
+}
+
+;// ./src/shared/tziakcha-records/index.ts
+
+
+
+
+
+
+;// ./src/shared/session-data.ts
+
+async function fetchSessionData(sessionId) {
+    const session = await session_fetchTziakchaSession(sessionId);
+    return {
+        players: session.players,
+        records: session.records.map((record) => ({ id: record.id })),
+        isFinished: session.isFinished,
     };
 }
 
@@ -2140,136 +2449,6 @@ async function fetchAiResponse(sessionId, seat) {
     return result.rows;
 }
 
-;// ./src/features/game/win-info.ts
-const FAN_NAMES = [
-    "无",
-    "大四喜",
-    "大三元",
-    "绿一色",
-    "九莲宝灯",
-    "四杠",
-    "连七对",
-    "十三幺",
-    "清幺九",
-    "小四喜",
-    "小三元",
-    "字一色",
-    "四暗刻",
-    "一色双龙会",
-    "一色四同顺",
-    "一色四节高",
-    "一色四步高",
-    "一色四连环",
-    "三杠",
-    "混幺九",
-    "七对",
-    "七星不靠",
-    "全双刻",
-    "清一色",
-    "一色三同顺",
-    "一色三节高",
-    "全大",
-    "全中",
-    "全小",
-    "清龙",
-    "三色双龙会",
-    "一色三步高",
-    "一色三连环",
-    "全带五",
-    "三同刻",
-    "三暗刻",
-    "全不靠",
-    "组合龙",
-    "大于五",
-    "小于五",
-    "三风刻",
-    "花龙",
-    "推不倒",
-    "三色三同顺",
-    "三色三节高",
-    "无番和",
-    "妙手回春",
-    "海底捞月",
-    "杠上开花",
-    "抢杠和",
-    "碰碰和",
-    "混一色",
-    "三色三步高",
-    "五门齐",
-    "全求人",
-    "双暗杠",
-    "双箭刻",
-    "全带幺",
-    "不求人",
-    "双明杠",
-    "和绝张",
-    "箭刻",
-    "圈风刻",
-    "门风刻",
-    "门前清",
-    "平和",
-    "四归一",
-    "双同刻",
-    "双暗刻",
-    "暗杠",
-    "断幺",
-    "一般高",
-    "喜相逢",
-    "连六",
-    "老少副",
-    "幺九刻",
-    "明杠",
-    "缺一门",
-    "无字",
-    "独听・边张",
-    "独听・嵌张",
-    "独听・单钓",
-    "自摸",
-    "花牌",
-    "明暗杠",
-    "※ 天和",
-    "※ 地和",
-    "※ 人和Ⅰ",
-    "※ 人和Ⅱ",
-];
-function toNumber(value) {
-    if (typeof value === "number" && Number.isFinite(value)) {
-        return value;
-    }
-    if (typeof value === "string") {
-        const parsed = Number(value);
-        return Number.isFinite(parsed) ? parsed : null;
-    }
-    return null;
-}
-function parseWinFanItems(rawT) {
-    if (!rawT || typeof rawT !== "object") {
-        return [];
-    }
-    return Object.entries(rawT)
-        .map(([fanIndexRaw, encodedRaw]) => {
-        const fanIndex = toNumber(fanIndexRaw);
-        const encoded = toNumber(encodedRaw);
-        if (fanIndex === null || encoded === null) {
-            return null;
-        }
-        const fanIndexInt = Math.floor(fanIndex);
-        const encodedInt = Math.floor(encoded);
-        const unitFan = encodedInt & 0xff;
-        const count = (encodedInt >> 8) + 1;
-        const fanName = FAN_NAMES[fanIndexInt] || `番种${fanIndexInt}`;
-        return {
-            fanIndex: fanIndexInt,
-            fanName,
-            count,
-            unitFan,
-            totalFan: unitFan * count,
-        };
-    })
-        .filter((item) => Boolean(item))
-        .sort((left, right) => left.fanIndex - right.fanIndex);
-}
-
 ;// ./src/features/game/step-simulator.ts
 const CHOICE_ACTION_TYPES = new Set([2, 3, 4, 5, 6, 8, 9]);
 function actionToChoice(actionIndex, combined, data) {
@@ -2332,51 +2511,12 @@ function extractChoices(stepData) {
 
 ;// ./src/features/game/step-data.ts
 
-/**
- * base64 字符串转 Uint8Array
- */
-function base64ToBytes(input) {
-    const binary = atob(input);
-    const bytes = new Uint8Array(binary.length);
-    for (let index = 0; index < binary.length; index += 1) {
-        bytes[index] = binary.charCodeAt(index);
-    }
-    return bytes;
-}
-/**
- * 解压 zlib+base64 编码的字符串
- */
-async function decompressZlibBase64(input) {
-    const streamCtor = w.DecompressionStream;
-    if (!streamCtor) {
-        throw new Error("当前浏览器不支持 DecompressionStream");
-    }
-    const bytes = base64ToBytes(input);
-    const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-    const source = new Blob([buffer]).stream();
-    const decompressed = source.pipeThrough(new streamCtor("deflate"));
-    return await new Response(decompressed).text();
-}
+
 /**
  * 读取单局牌谱数据
  */
 async function fetchStepData(recordId) {
-    const response = await fetch("/_qry/record/", {
-        method: "POST",
-        headers: {
-            "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-        },
-        body: new URLSearchParams({ id: recordId }).toString(),
-    });
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status} for /_qry/record/`);
-    }
-    const raw = await response.json();
-    if (!raw.script) {
-        throw new Error(`record ${recordId} 缺少 script`);
-    }
-    const jsonText = await decompressZlibBase64(raw.script);
-    return JSON.parse(jsonText);
+    return fetchTziakchaRecordStep(recordId);
 }
 
 ;// ./src/features/game/game-constants.ts
@@ -2423,7 +2563,7 @@ function buildResponseMap(responseRows, roundIndex) {
     });
     return responseMap;
 }
-function getSeatToPlayerOrder(roundNo) {
+function data_metrics_getSeatToPlayerOrder(roundNo) {
     if (!S2O.length) {
         return [0, 1, 2, 3];
     }
@@ -2440,62 +2580,38 @@ async function prepareSessionData(sessionId) {
     };
 }
 function computeRoundOutcomes(sessionPlayerNames, steps, playerMetrics) {
-    const rounds = [];
-    steps.forEach((stepData, roundNo) => {
-        const seatToPlayerOrder = getSeatToPlayerOrder(roundNo);
-        const resultBits = typeof stepData.b === "number" ? stepData.b : 0;
-        const winnerMask = resultBits & 0x0f;
-        const discarderMask = (resultBits >> 4) & 0x0f;
-        if (!winnerMask) {
-            return;
-        }
-        const winnerDetails = [];
-        for (let stepSeat = 0; stepSeat < 4; stepSeat += 1) {
-            if (((winnerMask >> stepSeat) & 1) === 0) {
-                continue;
-            }
-            const aiSeat = seatToPlayerOrder[stepSeat] ?? -1;
-            if (aiSeat < 0) {
-                continue;
-            }
-            const seatY = Array.isArray(stepData.y) ? stepData.y[stepSeat] : null;
-            const fanItems = parseWinFanItems(seatY?.t);
-            const totalFan = typeof seatY?.f === "number"
-                ? seatY.f
-                : fanItems.reduce((sum, item) => sum + item.totalFan, 0);
-            if (playerMetrics && playerMetrics[aiSeat]) {
-                playerMetrics[aiSeat].winRounds.push({
-                    roundNo: roundNo + 1,
-                    totalFan,
-                    fanItems,
+    const session = {
+        sessionId: "",
+        players: sessionPlayerNames.map((name) => ({ name })),
+        records: steps.map((step, index) => ({
+            id: String(index),
+            index,
+            step,
+        })),
+        periods: steps.length,
+        isFinished: true,
+    };
+    return extractTziakchaRoundWinInfos(session).map((round) => {
+        round.winners.forEach((winner) => {
+            if (playerMetrics && playerMetrics[winner.playerIndex]) {
+                playerMetrics[winner.playerIndex].winRounds.push({
+                    roundNo: round.roundNo,
+                    totalFan: winner.totalFan,
+                    fanItems: winner.fanItems,
                 });
             }
-            winnerDetails.push({
-                playerName: sessionPlayerNames[aiSeat] || `Seat ${aiSeat}`,
-                totalFan,
-                fanItems,
-            });
-        }
-        const discarderNames = [];
-        for (let stepSeat = 0; stepSeat < 4; stepSeat += 1) {
-            if (((discarderMask >> stepSeat) & 1) === 0) {
-                continue;
-            }
-            const aiSeat = seatToPlayerOrder[stepSeat] ?? -1;
-            if (aiSeat < 0) {
-                continue;
-            }
-            discarderNames.push(sessionPlayerNames[aiSeat] || `Seat ${aiSeat}`);
-        }
-        rounds.push({
-            roundNo: roundNo + 1,
-            winners: winnerDetails,
-            discarderNames,
-            selfDraw: discarderNames.length === 0 ||
-                discarderNames.every((name) => winnerDetails.some((winner) => winner.playerName === name)),
         });
+        return {
+            roundNo: round.roundNo,
+            winners: round.winners.map((winner) => ({
+                playerName: winner.playerName,
+                totalFan: winner.totalFan,
+                fanItems: winner.fanItems,
+            })),
+            discarderNames: round.discarders.map((discarder) => discarder.playerName),
+            selfDraw: round.selfDraw,
+        };
     });
-    return rounds;
 }
 async function computeMetrics(sessionId) {
     const prepared = await prepareSessionData(sessionId);
@@ -2516,7 +2632,7 @@ async function computeMetrics(sessionId) {
     const rounds = computeRoundOutcomes(sessionPlayerNames, steps, playerMetrics);
     const aiResponses = await Promise.all([0, 1, 2, 3].map((seat) => fetchAiResponse(sessionId, seat)));
     steps.forEach((stepData, roundNo) => {
-        const seatToPlayerOrder = getSeatToPlayerOrder(roundNo);
+        const seatToPlayerOrder = data_metrics_getSeatToPlayerOrder(roundNo);
         const aiToRoundSeat = [0, 1, 2, 3].map((playerOrder) => seatToPlayerOrder.findIndex((seatPlayerOrder) => seatPlayerOrder === playerOrder));
         const allChoices = extractChoices(stepData);
         for (let aiSeat = 0; aiSeat < 4; aiSeat += 1) {
@@ -4496,6 +4612,9 @@ function initTechZumgze() {
         warnLog("Failed to load zumgze data", error);
     });
 }
+
+;// ./src/features/game/win-info.ts
+
 
 ;// ./src/features/tech/analysis/compare-calc.ts
 
