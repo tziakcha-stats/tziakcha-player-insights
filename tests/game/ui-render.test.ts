@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  installRoundToggleButtons,
   upsertLoadingRows,
   upsertMetricsMessageRows,
 } from "../../src/features/game/ui-render";
@@ -23,6 +24,48 @@ function setupScoreTable(): HTMLTableRowElement {
 }
 
 describe("game ui render", () => {
+  it("keeps round toggle buttons when showing the unfinished-session message", () => {
+    document.body.innerHTML = `
+      <table class="table">
+        <tbody>
+          <tr>
+            <th>盘序</th>
+            <th>内容</th>
+          </tr>
+          <tr name="rdtr">
+            <td>1</td>
+            <td>第1局</td>
+          </tr>
+        </tbody>
+      </table>
+      <table class="table">
+        <tbody>
+          <tr id="standard-score-row">
+            <th>标准分</th>
+            <td colspan="2">A</td>
+            <td colspan="2">B</td>
+            <td colspan="2">C</td>
+            <td colspan="2">D</td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+
+    installRoundToggleButtons([
+      {
+        roundNo: 1,
+        winners: [],
+        discarderNames: [],
+        selfDraw: false,
+      },
+    ]);
+    upsertMetricsMessageRows("请等待牌局完成");
+
+    expect(
+      document.querySelector(".reviewer-game-round-toggle"),
+    ).not.toBeNull();
+  });
+
   it("renders a merged metrics message across both metric rows", () => {
     const anchor = setupScoreTable();
 
