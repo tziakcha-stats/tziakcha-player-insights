@@ -3938,6 +3938,20 @@ async function computeMetrics(sessionId) {
 ;// ./src/features/game/ui-render.ts
 
 
+
+const ROUND_WIN_DISPLAY_MODE_KEY = "reviewer:game-win-display-mode";
+const DEFAULT_ROUND_WIN_DISPLAY_MODE = "remark";
+const ROUND_WIN_MODE_SWITCHER_ID = "reviewer-game-win-mode-switcher";
+const ROUND_WIN_POPOVER_ID = "reviewer-game-win-popover";
+const ROUND_WIN_REMARK_HEADER_CLASS = "reviewer-game-win-remark-header";
+const ROUND_WIN_REMARK_CELL_CLASS = "reviewer-game-win-remark-cell";
+const ROUND_WIN_REMARK_TRIGGER_CLASS = "reviewer-game-win-remark-trigger";
+const ROUND_WIN_POPOVER_CLASS = "reviewer-game-win-popover";
+const ROUND_WIN_POPOVER_CLOSE_CLASS = "reviewer-game-win-popover-close";
+const ROUND_WIN_REMARK_MAX_WIDTH = "5em";
+const ROUND_WIN_POPOVER_AUTO_CLOSE_MS = 5000;
+const ROUND_WIN_REMARK_COLUMN_WIDTH = "7.5em";
+let activeRoundWinPopoverTimer = null;
 function findStandardScoreRow() {
     const selectors = ["table.table tr", "table tr"];
     for (const selector of selectors) {
@@ -4041,56 +4055,308 @@ function createRoundDetailRow(targetRow, round) {
     content.style.transition =
         "max-height 0.24s ease, opacity 0.2s ease, transform 0.2s ease";
     content.style.padding = "4px 6px";
-    if (!round.winners.length) {
-        const empty = document.createElement("div");
-        empty.textContent = "本盘无和牌";
-        content.appendChild(empty);
-    }
-    else {
-        const winnerNames = round.winners.map((item) => item.playerName).join("、");
-        const baseInfo = document.createElement("div");
-        const losePart = round.selfDraw
-            ? "自摸"
-            : `放铳：${round.discarderNames.join("、") || "未知"}`;
-        baseInfo.textContent = `和牌：${winnerNames}；${losePart}`;
-        content.appendChild(baseInfo);
-        round.winners.forEach((winner) => {
-            const line = document.createElement("div");
-            const fanText = winner.fanItems.length
-                ? winner.fanItems
-                    .map((fan) => fan.count > 1 ? `${fan.fanName}×${fan.count}` : fan.fanName)
-                    .join("、")
-                : "番种未知";
-            line.textContent = `${winner.playerName}：${winner.totalFan}番（${fanText}）`;
-            content.appendChild(line);
-        });
-    }
+    appendRoundDetailContent(content, round);
     cell.appendChild(content);
     detailRow.appendChild(cell);
     return detailRow;
 }
-function installRoundToggleButtons(rounds, retryCount = 0) {
-    const table = findRoundTable();
-    if (!table) {
-        if (retryCount < UI_RETRY_MAX_COUNT) {
-            setTimeout(() => installRoundToggleButtons(rounds, retryCount + 1), UI_RETRY_INTERVAL_MS);
-        }
+function appendRoundDetailContent(container, round) {
+    if (!round.winners.length) {
+        const empty = document.createElement("div");
+        empty.textContent = "荒庄";
+        container.appendChild(empty);
         return;
     }
+    const winnerNames = round.winners.map((item) => item.playerName).join("、");
+    const baseInfo = document.createElement("div");
+    const losePart = round.selfDraw
+        ? "自摸"
+        : `放铳：${round.discarderNames.join("、") || "未知"}`;
+    baseInfo.textContent = `和牌：${winnerNames}；${losePart}`;
+    container.appendChild(baseInfo);
+    round.winners.forEach((winner) => {
+        const line = document.createElement("div");
+        const fanText = winner.fanItems.length
+            ? winner.fanItems
+                .map((fan) => fan.count > 1 ? `${fan.fanName}×${fan.count}` : fan.fanName)
+                .join("、")
+            : "番种未知";
+        line.textContent = `${winner.playerName}：${winner.totalFan}番（${fanText}）`;
+        container.appendChild(line);
+    });
+}
+function readRoundWinDisplayMode() {
+    const stored = getLocalStorageItem(ROUND_WIN_DISPLAY_MODE_KEY);
+    if (stored === "remark" || stored === "detail" || stored === "original") {
+        return stored;
+    }
+    return DEFAULT_ROUND_WIN_DISPLAY_MODE;
+}
+function writeRoundWinDisplayMode(mode) {
+    setLocalStorageItem(ROUND_WIN_DISPLAY_MODE_KEY, mode);
+}
+function closeActiveRoundWinPopover() {
+    if (activeRoundWinPopoverTimer !== null) {
+        window.clearTimeout(activeRoundWinPopoverTimer);
+        activeRoundWinPopoverTimer = null;
+    }
+    document.getElementById(ROUND_WIN_POPOVER_ID)?.remove();
+}
+function clearRoundWinEnhancements() {
+    closeActiveRoundWinPopover();
+    document
+        .querySelectorAll(`.${ROUND_WIN_REMARK_HEADER_CLASS}`)
+        .forEach((header) => header.remove());
+    document
+        .querySelectorAll(`.${ROUND_WIN_REMARK_CELL_CLASS}`)
+        .forEach((cell) => cell.remove());
+    document
+        .querySelectorAll(".reviewer-game-round-separator")
+        .forEach((separator) => separator.remove());
+    document
+        .querySelectorAll(".reviewer-game-round-toggle")
+        .forEach((button) => button.remove());
+    document
+        .querySelectorAll(".reviewer-game-detail-row")
+        .forEach((row) => row.remove());
+}
+function getRoundRows(table) {
+    const rdtrRows = Array.from(table.querySelectorAll("tr[name='rdtr']"));
+    return rdtrRows.length
+        ? rdtrRows
+        : Array.from(table.querySelectorAll("tr"));
+}
+function createModeButton(mode, label, activeMode, onClick) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = label;
+    button.dataset.winDisplayMode = mode;
+    button.setAttribute("aria-pressed", mode === activeMode ? "true" : "false");
+    button.style.border = "1px solid rgba(49,70,92,0.22)";
+    button.style.borderRadius = "4px";
+    button.style.background =
+        mode === activeMode ? "rgba(49, 70, 92, 0.14)" : "rgba(255,255,255,0.72)";
+    button.style.color = "rgba(49,70,92,0.9)";
+    button.style.cursor = "pointer";
+    button.style.padding = "3px 10px";
+    button.style.fontSize = "12px";
+    button.style.lineHeight = "1.2";
+    button.style.boxShadow = "none";
+    button.addEventListener("click", () => onClick(mode));
+    return button;
+}
+function ensureModeSwitcher(activeMode, onModeChange) {
+    const table = findRoundTable();
+    if (!table || !table.parentElement) {
+        return;
+    }
+    const existing = document.getElementById(ROUND_WIN_MODE_SWITCHER_ID);
+    if (existing) {
+        existing.remove();
+    }
+    const switcher = document.createElement("div");
+    switcher.id = ROUND_WIN_MODE_SWITCHER_ID;
+    switcher.style.display = "flex";
+    switcher.style.gap = "6px";
+    switcher.style.alignItems = "center";
+    switcher.style.flexWrap = "wrap";
+    switcher.style.margin = "6px 0 8px";
+    switcher.appendChild(createModeButton("remark", "番种备注", activeMode, onModeChange));
+    switcher.appendChild(createModeButton("detail", "和牌详细", activeMode, onModeChange));
+    switcher.appendChild(createModeButton("original", "原始样式", activeMode, onModeChange));
+    table.insertAdjacentElement("beforebegin", switcher);
+}
+function getMaxFanRemark(round) {
+    if (!round.winners.length) {
+        return "荒庄";
+    }
+    let bestFanName = "番种未知";
+    let bestFanValue = -1;
+    round.winners.forEach((winner) => {
+        if (!winner.fanItems.length && bestFanValue < 0) {
+            bestFanName = "番种未知";
+            bestFanValue = 0;
+            return;
+        }
+        winner.fanItems.forEach((fan) => {
+            const fanValue = typeof fan.totalFan === "number" && Number.isFinite(fan.totalFan)
+                ? fan.totalFan
+                : fan.unitFan * fan.count;
+            if (fanValue > bestFanValue) {
+                bestFanName = fan.fanName;
+                bestFanValue = fanValue;
+            }
+        });
+    });
+    return bestFanName;
+}
+function createRoundRemarkContent(round) {
+    const content = document.createElement("div");
+    appendRoundDetailContent(content, round);
+    return content;
+}
+function copyCellPresentation(target, source) {
+    if (!(source instanceof HTMLTableCellElement)) {
+        return;
+    }
+    target.style.cssText = source.style.cssText;
+}
+function openRoundWinPopover(trigger, round) {
+    closeActiveRoundWinPopover();
+    const popover = document.createElement("div");
+    popover.id = ROUND_WIN_POPOVER_ID;
+    popover.className = ROUND_WIN_POPOVER_CLASS;
+    popover.style.position = "absolute";
+    popover.style.zIndex = "9999";
+    popover.style.maxWidth = "260px";
+    popover.style.padding = "10px 12px";
+    popover.style.border = "1px solid rgba(0,0,0,0.2)";
+    popover.style.borderRadius = "8px";
+    popover.style.background = "#fff";
+    popover.style.color = "#222";
+    popover.style.boxShadow = "0 8px 24px rgba(0,0,0,0.15)";
+    popover.style.fontSize = "12px";
+    popover.style.lineHeight = "1.5";
+    const closeButton = document.createElement("button");
+    closeButton.type = "button";
+    closeButton.className = ROUND_WIN_POPOVER_CLOSE_CLASS;
+    closeButton.textContent = "×";
+    closeButton.style.position = "absolute";
+    closeButton.style.top = "4px";
+    closeButton.style.right = "6px";
+    closeButton.style.border = "0";
+    closeButton.style.background = "transparent";
+    closeButton.style.cursor = "pointer";
+    closeButton.style.fontSize = "16px";
+    closeButton.addEventListener("click", () => closeActiveRoundWinPopover());
+    popover.appendChild(closeButton);
+    const content = createRoundRemarkContent(round);
+    content.style.paddingRight = "14px";
+    popover.appendChild(content);
+    document.body.appendChild(popover);
+    const rect = trigger.getBoundingClientRect();
+    popover.style.left = `${window.scrollX + rect.right + 8}px`;
+    popover.style.top = `${window.scrollY + rect.top}px`;
+    activeRoundWinPopoverTimer = window.setTimeout(() => {
+        closeActiveRoundWinPopover();
+    }, ROUND_WIN_POPOVER_AUTO_CLOSE_MS);
+}
+function createRemarkCell(round) {
+    const cell = document.createElement("td");
+    cell.className = ROUND_WIN_REMARK_CELL_CLASS;
+    cell.style.whiteSpace = "nowrap";
+    cell.style.textAlign = "center";
+    cell.style.verticalAlign = "middle";
+    const remark = getMaxFanRemark(round);
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.className = ROUND_WIN_REMARK_TRIGGER_CLASS;
+    trigger.textContent = remark;
+    trigger.style.display = "inline-block";
+    trigger.style.maxWidth = ROUND_WIN_REMARK_MAX_WIDTH;
+    trigger.style.overflow = "hidden";
+    trigger.style.whiteSpace = "nowrap";
+    trigger.style.textOverflow = "ellipsis";
+    trigger.style.padding = "0";
+    trigger.style.border = "0";
+    trigger.style.background = "transparent";
+    trigger.style.cursor = remark === "荒庄" ? "default" : "pointer";
+    trigger.style.color =
+        remark === "荒庄" ? "rgba(102,115,129,0.92)" : "rgba(49,70,92,0.96)";
+    trigger.style.textDecoration = "none";
+    trigger.style.font = "inherit";
+    trigger.style.lineHeight = "inherit";
+    trigger.title = remark;
+    if (remark !== "荒庄") {
+        trigger.addEventListener("click", () => openRoundWinPopover(trigger, round));
+    }
+    cell.appendChild(trigger);
+    return cell;
+}
+function createEmptyRemarkCell(source) {
+    const cell = document.createElement("td");
+    cell.className = ROUND_WIN_REMARK_CELL_CLASS;
+    copyCellPresentation(cell, source);
+    cell.textContent = "";
+    return cell;
+}
+function appendRemarkColumnScaffold(table) {
+    const rows = Array.from(table.querySelectorAll("tr"));
+    rows.forEach((row, index) => {
+        if (row.querySelector(`.${ROUND_WIN_REMARK_HEADER_CLASS}, .${ROUND_WIN_REMARK_CELL_CLASS}`)) {
+            return;
+        }
+        if (index !== 3) {
+            const filler = createEmptyRemarkCell(row.lastElementChild);
+            if (row.lastElementChild instanceof HTMLTableCellElement) {
+                filler.className =
+                    `${row.lastElementChild.className} ${ROUND_WIN_REMARK_CELL_CLASS}`.trim();
+            }
+            row.appendChild(filler);
+            return;
+        }
+        const header = document.createElement("th");
+        header.className = ROUND_WIN_REMARK_HEADER_CLASS;
+        copyCellPresentation(header, row.lastElementChild);
+        if (row.lastElementChild instanceof HTMLTableCellElement) {
+            header.className =
+                `${row.lastElementChild.className} ${ROUND_WIN_REMARK_HEADER_CLASS}`.trim();
+        }
+        header.textContent = "番种备注";
+        header.style.width = ROUND_WIN_REMARK_COLUMN_WIDTH;
+        header.style.minWidth = ROUND_WIN_REMARK_COLUMN_WIDTH;
+        header.style.whiteSpace = "nowrap";
+        header.style.textAlign = "center";
+        header.style.verticalAlign = "middle";
+        row.appendChild(header);
+    });
+}
+function renderRemarkMode(table, rounds) {
+    const roundMap = new Map();
+    rounds.forEach((round) => roundMap.set(round.roundNo, round));
+    appendRemarkColumnScaffold(table);
+    getRoundRows(table).forEach((row, rowIndex) => {
+        const roundNo = (table.querySelectorAll("tr[name='rdtr']").length ? rowIndex + 1 : 0) ||
+            parseRoundNoFromRow(row);
+        if (!roundNo) {
+            return;
+        }
+        const round = roundMap.get(roundNo) || {
+            roundNo,
+            winners: [],
+            discarderNames: [],
+            selfDraw: false,
+        };
+        const existingCell = row.querySelector(`.${ROUND_WIN_REMARK_CELL_CLASS}`);
+        const cell = createRemarkCell(round);
+        if (existingCell) {
+            existingCell.replaceWith(cell);
+        }
+        else {
+            copyCellPresentation(cell, row.lastElementChild);
+            if (row.lastElementChild instanceof HTMLTableCellElement) {
+                cell.className =
+                    `${row.lastElementChild.className} ${ROUND_WIN_REMARK_CELL_CLASS}`.trim();
+            }
+            cell.style.whiteSpace = "nowrap";
+            cell.style.textAlign = "center";
+            cell.style.verticalAlign = "middle";
+            row.appendChild(cell);
+        }
+    });
+}
+function renderDetailMode(table, rounds, retryCount) {
     const roundMap = new Map();
     rounds.forEach((round) => {
         roundMap.set(round.roundNo, round);
     });
-    const rdtrRows = Array.from(table.querySelectorAll("tr[name='rdtr']"));
-    const rows = rdtrRows.length
-        ? rdtrRows
-        : Array.from(table.querySelectorAll("tr"));
     let installedCount = 0;
-    rows.forEach((row, rowIndex) => {
+    getRoundRows(table).forEach((row, rowIndex) => {
         if (row.querySelector(".reviewer-game-round-toggle")) {
             return;
         }
-        const roundNo = rdtrRows.length ? rowIndex + 1 : parseRoundNoFromRow(row);
+        const roundNo = (table.querySelectorAll("tr[name='rdtr']").length ? rowIndex + 1 : 0) ||
+            parseRoundNoFromRow(row);
         if (!roundNo) {
             return;
         }
@@ -4150,8 +4416,35 @@ function installRoundToggleButtons(rounds, retryCount = 0) {
         installedCount += 1;
     });
     if (installedCount === 0 && retryCount < UI_RETRY_MAX_COUNT) {
-        setTimeout(() => installRoundToggleButtons(rounds, retryCount + 1), UI_RETRY_INTERVAL_MS);
+        setTimeout(() => installRoundWinDisplayModes(rounds, retryCount + 1), UI_RETRY_INTERVAL_MS);
     }
+}
+function applyRoundWinDisplayMode(mode, rounds, retryCount) {
+    const table = findRoundTable();
+    if (!table) {
+        if (retryCount < UI_RETRY_MAX_COUNT) {
+            setTimeout(() => installRoundWinDisplayModes(rounds, retryCount + 1), UI_RETRY_INTERVAL_MS);
+        }
+        return;
+    }
+    clearRoundWinEnhancements();
+    ensureModeSwitcher(mode, (nextMode) => {
+        writeRoundWinDisplayMode(nextMode);
+        applyRoundWinDisplayMode(nextMode, rounds, 0);
+    });
+    if (mode === "remark") {
+        renderRemarkMode(table, rounds);
+        return;
+    }
+    if (mode === "detail") {
+        renderDetailMode(table, rounds, retryCount);
+    }
+}
+function installRoundWinDisplayModes(rounds, retryCount = 0) {
+    applyRoundWinDisplayMode(readRoundWinDisplayMode(), rounds, retryCount);
+}
+function installRoundToggleButtons(rounds, retryCount = 0) {
+    applyRoundWinDisplayMode("detail", rounds, retryCount);
 }
 function upsertMetricsRows(metrics) {
     withAnchorRow((anchor) => {
@@ -4237,7 +4530,7 @@ function initGameFeature(href) {
             recordCount: prepared.steps.length,
             roundsWithOutcomeCount: rounds.length,
         });
-        installRoundToggleButtons(rounds);
+        installRoundWinDisplayModes(rounds);
     })
         .catch((error) => {
         warnLog("Game rounds preview failed", error);
@@ -4245,7 +4538,7 @@ function initGameFeature(href) {
     void computeMetrics(sessionId)
         .then((metrics) => {
         upsertMetricsRows(metrics);
-        installRoundToggleButtons(metrics.rounds);
+        installRoundWinDisplayModes(metrics.rounds);
     })
         .catch((error) => {
         if (error?.message === SESSION_NOT_FINISHED_ERROR) {
