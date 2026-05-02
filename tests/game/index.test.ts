@@ -7,6 +7,7 @@ const installRoundToggleButtons = vi.fn();
 const upsertLoadingRows = vi.fn();
 const upsertMetricsRows = vi.fn();
 const upsertMetricsMessageRows = vi.fn();
+const infoLog = vi.fn();
 
 vi.mock("../../src/features/game/data-metrics", () => ({
   prepareSessionData,
@@ -21,6 +22,11 @@ vi.mock("../../src/features/game/ui-render", () => ({
   upsertMetricsMessageRows,
 }));
 
+vi.mock("../../src/shared/logger", () => ({
+  infoLog,
+  warnLog: vi.fn(),
+}));
+
 describe("game feature entry", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -31,6 +37,7 @@ describe("game feature entry", () => {
     upsertLoadingRows.mockReset();
     upsertMetricsRows.mockReset();
     upsertMetricsMessageRows.mockReset();
+    infoLog.mockReset();
     window.history.replaceState({}, "", "/game?id=session-1");
   });
 
@@ -71,5 +78,11 @@ describe("game feature entry", () => {
     expect(upsertMetricsMessageRows).toHaveBeenCalledTimes(1);
     expect(upsertMetricsMessageRows).toHaveBeenCalledWith("请等待牌局完成");
     expect(upsertMetricsRows).not.toHaveBeenCalled();
+    expect(infoLog).toHaveBeenCalledWith("Game session prepared", {
+      sessionId: "session-1",
+      isFinished: false,
+      recordCount: 1,
+      roundsWithOutcomeCount: 1,
+    });
   });
 });

@@ -68,11 +68,6 @@ function clearInsertedRows(): void {
   document.getElementById("reviewer-game-ratio-row")?.remove();
   document.getElementById("reviewer-game-chaga-row")?.remove();
   document.getElementById("reviewer-game-pending-row")?.remove();
-  document
-    .querySelectorAll(
-      ".reviewer-game-round-toggle, .reviewer-game-round-separator, .reviewer-game-detail-row",
-    )
-    .forEach((element) => element.remove());
 }
 
 function withAnchorRow(

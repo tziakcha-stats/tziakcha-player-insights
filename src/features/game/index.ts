@@ -42,6 +42,12 @@ export function initGameFeature(href: string): boolean {
         prepared.sessionPlayerNames,
         prepared.steps,
       );
+      infoLog("Game session prepared", {
+        sessionId,
+        isFinished: prepared.isFinished,
+        recordCount: prepared.steps.length,
+        roundsWithOutcomeCount: rounds.length,
+      });
       installRoundToggleButtons(rounds);
     })
     .catch((error) => {
