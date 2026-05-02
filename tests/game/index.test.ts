@@ -68,6 +68,7 @@ describe("game feature entry", () => {
         selfDraw: false,
       },
     ]);
+    expect(upsertMetricsMessageRows).toHaveBeenCalledTimes(1);
     expect(upsertMetricsMessageRows).toHaveBeenCalledWith("请等待牌局完成");
     expect(upsertMetricsRows).not.toHaveBeenCalled();
   });

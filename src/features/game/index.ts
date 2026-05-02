@@ -43,9 +43,6 @@ export function initGameFeature(href: string): boolean {
         prepared.steps,
       );
       installRoundToggleButtons(rounds);
-      if (!prepared.isFinished) {
-        upsertMetricsMessageRows("请等待牌局完成");
-      }
     })
     .catch((error) => {
       warnLog("Game rounds preview failed", error);
