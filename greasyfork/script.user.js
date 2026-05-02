@@ -6145,8 +6145,12 @@ function renderZumgze(fan = {}) {
     }
 }
 function initTechZumgze() {
-    const basicTable = document.getElementById("basic");
-    const eloTable = document.getElementById("elo");
+    const doc = w.document;
+    if (!doc) {
+        return;
+    }
+    const basicTable = doc.getElementById("basic");
+    const eloTable = doc.getElementById("elo");
     if (!basicTable || !eloTable) {
         w.setTimeout(initTechZumgze, 100);
         return;
