@@ -9,6 +9,7 @@ import {
 import { SESSION_NOT_FINISHED_ERROR } from "./constants";
 import {
   installRoundToggleButtons,
+  installRoundWinDisplayModes,
   upsertLoadingRows,
   upsertMetricsRows,
   upsertMetricsMessageRows,
@@ -48,7 +49,7 @@ export function initGameFeature(href: string): boolean {
         recordCount: prepared.steps.length,
         roundsWithOutcomeCount: rounds.length,
       });
-      installRoundToggleButtons(rounds);
+      installRoundWinDisplayModes(rounds);
     })
     .catch((error) => {
       warnLog("Game rounds preview failed", error);
@@ -57,7 +58,7 @@ export function initGameFeature(href: string): boolean {
   void computeMetrics(sessionId)
     .then((metrics) => {
       upsertMetricsRows(metrics);
-      installRoundToggleButtons(metrics.rounds);
+      installRoundWinDisplayModes(metrics.rounds);
     })
     .catch((error) => {
       if ((error as Error)?.message === SESSION_NOT_FINISHED_ERROR) {

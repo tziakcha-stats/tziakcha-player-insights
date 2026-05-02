@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   installRoundToggleButtons,
+  installRoundWinDisplayModes,
   upsertLoadingRows,
   upsertMetricsMessageRows,
 } from "../../src/features/game/ui-render";
+import { RoundOutcome } from "../../src/features/game/types";
 
 function setupScoreTable(): HTMLTableRowElement {
   document.body.innerHTML = `
@@ -21,6 +23,111 @@ function setupScoreTable(): HTMLTableRowElement {
   `;
 
   return document.getElementById("standard-score-row") as HTMLTableRowElement;
+}
+
+function setupRoundTable(): HTMLTableElement {
+  document.body.innerHTML = `
+    <table class="table" id="round-table">
+      <tbody>
+        <tr>
+          <th class="bg-secondary text-light">选手姓名</th>
+          <td colspan="8" class="bg-secondary text-light">玩家信息</td>
+        </tr>
+        <tr>
+          <th>开局座位</th>
+          <td colspan="8">东南西北</td>
+        </tr>
+        <tr>
+          <th>每圈座位</th>
+          <td colspan="8">东南西北</td>
+        </tr>
+        <tr>
+          <th>盘序</th>
+          <th>结果</th>
+          <th>备注</th>
+        </tr>
+        <tr name="rdtr" id="round-row-1">
+          <td>1</td>
+          <td>第1局</td>
+          <td>Ron</td>
+        </tr>
+        <tr name="rdtr" id="round-row-2">
+          <td>2</td>
+          <td>第2局</td>
+          <td>Draw</td>
+        </tr>
+        <tr name="rdtr" id="round-row-3">
+          <td>3</td>
+          <td>第3局</td>
+          <td>Tsumo</td>
+        </tr>
+        <tr id="summary-row">
+          <th class="bg-secondary text-light">合计</th>
+          <td colspan="2" class="bg-secondary text-light">100</td>
+        </tr>
+        <tr id="rank-row">
+          <th class="bg-secondary text-light">名次</th>
+          <td colspan="2" class="bg-secondary text-light">1</td>
+        </tr>
+        <tr id="standard-row">
+          <th class="bg-secondary text-light">标准分</th>
+          <td colspan="2" class="bg-secondary text-light">45.0</td>
+        </tr>
+      </tbody>
+    </table>
+  `;
+
+  return document.getElementById("round-table") as HTMLTableElement;
+}
+
+function buildRounds(): RoundOutcome[] {
+  return [
+    {
+      roundNo: 1,
+      winners: [
+        {
+          playerName: "A",
+          totalFan: 8,
+          fanItems: [
+            {
+              fanIndex: 8,
+              fanName: "平和",
+              count: 1,
+              unitFan: 1,
+              totalFan: 1,
+            },
+            {
+              fanIndex: 71,
+              fanName: "清一色",
+              count: 3,
+              unitFan: 2,
+              totalFan: 6,
+            },
+          ],
+        },
+      ],
+      discarderNames: ["B"],
+      selfDraw: false,
+    },
+    {
+      roundNo: 2,
+      winners: [],
+      discarderNames: [],
+      selfDraw: false,
+    },
+    {
+      roundNo: 3,
+      winners: [
+        {
+          playerName: "C",
+          totalFan: 1,
+          fanItems: [],
+        },
+      ],
+      discarderNames: [],
+      selfDraw: true,
+    },
+  ];
 }
 
 describe("game ui render", () => {
@@ -106,5 +213,235 @@ describe("game ui render", () => {
     expect(chagaRow.querySelectorAll("td")).toHaveLength(4);
     expect(ratioRow.textContent).toContain("计算中...");
     expect(chagaRow.textContent).toContain("计算中...");
+  });
+
+  it("defaults to remark mode and renders a single remark column", () => {
+    setupRoundTable();
+
+    installRoundWinDisplayModes(buildRounds());
+
+    const switcher = document.getElementById("reviewer-game-win-mode-switcher");
+    expect(switcher).not.toBeNull();
+
+    const modeButtons = Array.from(
+      switcher?.querySelectorAll("button[data-win-display-mode]") ?? [],
+    );
+    expect(modeButtons).toHaveLength(3);
+
+    const activeButton = switcher?.querySelector(
+      'button[data-win-display-mode="remark"][aria-pressed="true"]',
+    );
+    expect(activeButton?.textContent).toContain("番种备注");
+
+    const remarkHeaders = document.querySelectorAll(
+      "th.reviewer-game-win-remark-header",
+    );
+    const remarkCells = document.querySelectorAll(
+      "td.reviewer-game-win-remark-cell",
+    );
+
+    expect(remarkHeaders).toHaveLength(1);
+    expect(remarkCells).toHaveLength(9);
+    expect(document.querySelector(".reviewer-game-detail-row")).toBeNull();
+
+    const remarkHeader = remarkHeaders[0] as HTMLTableCellElement | undefined;
+    expect(remarkHeader?.style.width).toBe("7.5em");
+    expect(remarkHeader?.style.whiteSpace).toBe("nowrap");
+    expect(remarkHeader?.textContent).toBe("番种备注");
+
+    const activeModeButton = switcher?.querySelector(
+      'button[data-win-display-mode="remark"][aria-pressed="true"]',
+    ) as HTMLButtonElement | null;
+    expect(activeModeButton?.style.borderRadius).toBe("4px");
+    expect(activeModeButton?.style.background).toContain("rgba(49, 70, 92");
+
+    const leadingRemarkCells = Array.from(
+      document.querySelectorAll("td.reviewer-game-win-remark-cell"),
+    ).slice(0, 3) as HTMLTableCellElement[];
+    expect(leadingRemarkCells.every((cell) => cell.textContent === "")).toBe(
+      true,
+    );
+
+    const summaryRemark = document.querySelector(
+      "#summary-row .reviewer-game-win-remark-cell",
+    ) as HTMLTableCellElement | null;
+    const rankRemark = document.querySelector(
+      "#rank-row .reviewer-game-win-remark-cell",
+    ) as HTMLTableCellElement | null;
+    const standardRemark = document.querySelector(
+      "#standard-row .reviewer-game-win-remark-cell",
+    ) as HTMLTableCellElement | null;
+    expect(summaryRemark?.textContent).toBe("");
+    expect(rankRemark?.textContent).toBe("");
+    expect(standardRemark?.textContent).toBe("");
+    expect(summaryRemark?.className).toContain("bg-secondary");
+  });
+
+  it("switches between remark/detail/original modes and cleans up DOM", () => {
+    setupRoundTable();
+
+    installRoundWinDisplayModes(buildRounds());
+
+    const detailButton = document.querySelector(
+      'button[data-win-display-mode="detail"]',
+    ) as HTMLButtonElement | null;
+    detailButton?.click();
+
+    expect(
+      document.querySelectorAll("td.reviewer-game-win-remark-cell"),
+    ).toHaveLength(0);
+    expect(
+      document.querySelector(".reviewer-game-round-toggle"),
+    ).not.toBeNull();
+
+    const originalButton = document.querySelector(
+      'button[data-win-display-mode="original"]',
+    ) as HTMLButtonElement | null;
+    originalButton?.click();
+
+    expect(document.querySelector(".reviewer-game-round-toggle")).toBeNull();
+    expect(document.querySelector(".reviewer-game-win-popover")).toBeNull();
+    expect(
+      document.querySelectorAll("td.reviewer-game-win-remark-cell"),
+    ).toHaveLength(0);
+
+    const remarkButton = document.querySelector(
+      'button[data-win-display-mode="remark"]',
+    ) as HTMLButtonElement | null;
+    remarkButton?.click();
+
+    expect(
+      document.querySelectorAll("td.reviewer-game-win-remark-cell"),
+    ).toHaveLength(9);
+    expect(document.querySelector(".reviewer-game-round-toggle")).toBeNull();
+  });
+
+  it("renders 荒庄 and 默认番种备注 in remark mode", () => {
+    setupRoundTable();
+
+    installRoundWinDisplayModes(buildRounds());
+
+    const round2Remark = document.querySelector(
+      "#round-row-2 .reviewer-game-win-remark-cell",
+    );
+    const round3Remark = document.querySelector(
+      "#round-row-3 .reviewer-game-win-remark-cell",
+    );
+
+    expect(round2Remark?.textContent).toContain("荒庄");
+    expect(round3Remark?.textContent).toContain("番种未知");
+
+    const drawBadge = round2Remark?.querySelector(
+      ".reviewer-game-win-remark-trigger",
+    ) as HTMLButtonElement | null;
+    expect(drawBadge).not.toBeNull();
+    expect(drawBadge?.style.borderRadius).toBe("");
+    expect(drawBadge?.style.background).toBe("transparent");
+    expect(drawBadge?.style.padding).toBe("0px");
+  });
+
+  it("shows only the max-fan remark for each round", () => {
+    setupRoundTable();
+
+    installRoundWinDisplayModes(buildRounds());
+
+    const round1Remark = document.querySelector(
+      "#round-row-1 .reviewer-game-win-remark-cell",
+    ) as HTMLTableCellElement | null;
+
+    expect(round1Remark?.textContent).toContain("清一色");
+    expect(round1Remark?.textContent).not.toContain("平和");
+  });
+
+  it("prefers total fan value instead of item count when picking the remark", () => {
+    setupRoundTable();
+
+    installRoundWinDisplayModes([
+      {
+        roundNo: 1,
+        winners: [
+          {
+            playerName: "CatHikari",
+            totalFan: 12,
+            fanItems: [
+              {
+                fanIndex: 57,
+                fanName: "花龙",
+                count: 1,
+                unitFan: 8,
+                totalFan: 8,
+              },
+              {
+                fanIndex: 8,
+                fanName: "平和",
+                count: 1,
+                unitFan: 2,
+                totalFan: 2,
+              },
+              {
+                fanIndex: 1,
+                fanName: "花牌",
+                count: 2,
+                unitFan: 1,
+                totalFan: 2,
+              },
+            ],
+          },
+        ],
+        discarderNames: ["Choimoe"],
+        selfDraw: false,
+      },
+      {
+        roundNo: 2,
+        winners: [],
+        discarderNames: [],
+        selfDraw: false,
+      },
+      {
+        roundNo: 3,
+        winners: [],
+        discarderNames: [],
+        selfDraw: false,
+      },
+    ]);
+
+    const round1Remark = document.querySelector(
+      "#round-row-1 .reviewer-game-win-remark-cell",
+    ) as HTMLTableCellElement | null;
+
+    expect(round1Remark?.textContent).toContain("花龙");
+    expect(round1Remark?.textContent).not.toContain("花牌");
+  });
+
+  it("opens one floating detail popover and closes it manually", () => {
+    setupRoundTable();
+
+    installRoundWinDisplayModes(buildRounds());
+
+    const firstRemarkButton = document.querySelector(
+      "#round-row-1 .reviewer-game-win-remark-trigger",
+    ) as HTMLButtonElement | null;
+    firstRemarkButton?.click();
+
+    let popovers = document.querySelectorAll(".reviewer-game-win-popover");
+    expect(popovers).toHaveLength(1);
+    expect(popovers[0]?.textContent).toContain("清一色");
+
+    const thirdRemarkButton = document.querySelector(
+      "#round-row-3 .reviewer-game-win-remark-trigger",
+    ) as HTMLButtonElement | null;
+    thirdRemarkButton?.click();
+
+    popovers = document.querySelectorAll(".reviewer-game-win-popover");
+    expect(popovers).toHaveLength(1);
+    expect(popovers[0]?.textContent).toContain("番种未知");
+    expect(popovers[0]?.textContent).not.toContain("清一色");
+
+    const closeButton = popovers[0]?.querySelector(
+      ".reviewer-game-win-popover-close",
+    ) as HTMLButtonElement | null;
+    closeButton?.click();
+
+    expect(document.querySelector(".reviewer-game-win-popover")).toBeNull();
   });
 });
