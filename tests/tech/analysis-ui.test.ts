@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 function flush() {
   return new Promise((resolve) => setTimeout(resolve, 0));
@@ -52,6 +52,11 @@ describe("tech analysis tab and style compare ui", () => {
       "https://example.com/user/tech/?id=SELF01",
     );
     buildTechDom();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   it("adds analysis tab, keeps card body visible, and toggles back to data", async () => {
@@ -434,5 +439,23 @@ describe("tech analysis tab and style compare ui", () => {
     await flush();
 
     expect(rowFanNames()).toContain("抢杠和");
+  });
+
+  it("stops zumgze retry timers when document becomes unavailable", async () => {
+    vi.useFakeTimers();
+    document.body.innerHTML = `<div class="container"></div>`;
+
+    const setTimeoutSpy = vi.spyOn(window, "setTimeout");
+    const { initTechZumgze } =
+      await import("../../src/features/tech/zumgze/index");
+
+    initTechZumgze();
+
+    expect(setTimeoutSpy).toHaveBeenCalled();
+
+    vi.stubGlobal("document", undefined);
+    vi.runOnlyPendingTimers();
+
+    expect(() => vi.runOnlyPendingTimers()).not.toThrow();
   });
 });
