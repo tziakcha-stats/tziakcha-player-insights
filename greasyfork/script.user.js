@@ -710,6 +710,1460 @@ function styleTagTransform(css, styleElement) {
 }
 module.exports = styleTagTransform;
 
+/***/ },
+
+/***/ "./node_modules/tziakcha-fetcher/lib/core/config/actions.js"
+(module) {
+
+
+
+const ACTION_TYPES = {
+  NONE: 0,
+  FLOWER_REPLACE: 1,
+  DISCARD: 2,
+  CHI: 3,
+  PENG: 4,
+  GANG: 5,
+  WIN: 6,
+  DRAW: 7,
+  PASS: 8,
+  ABANDON: 9
+};
+
+const ACTION_TYPE_NAMES = {
+  [ACTION_TYPES.NONE]: "none",
+  [ACTION_TYPES.FLOWER_REPLACE]: "flowerReplace",
+  [ACTION_TYPES.DISCARD]: "discard",
+  [ACTION_TYPES.CHI]: "chi",
+  [ACTION_TYPES.PENG]: "peng",
+  [ACTION_TYPES.GANG]: "gang",
+  [ACTION_TYPES.WIN]: "win",
+  [ACTION_TYPES.DRAW]: "draw",
+  [ACTION_TYPES.PASS]: "pass",
+  [ACTION_TYPES.ABANDON]: "abandon"
+};
+
+module.exports = {
+  ACTION_TYPES,
+  ACTION_TYPE_NAMES
+};
+
+
+/***/ },
+
+/***/ "./node_modules/tziakcha-fetcher/lib/core/config/game.js"
+(module) {
+
+
+
+const FAN_NAMES = [
+  "无",
+  "大四喜",
+  "大三元",
+  "绿一色",
+  "九莲宝灯",
+  "四杠",
+  "连七对",
+  "十三幺",
+  "清幺九",
+  "小四喜",
+  "小三元",
+  "字一色",
+  "四暗刻",
+  "一色双龙会",
+  "一色四同顺",
+  "一色四节高",
+  "一色四步高",
+  "一色四连环",
+  "三杠",
+  "混幺九",
+  "七对",
+  "七星不靠",
+  "全双刻",
+  "清一色",
+  "一色三同顺",
+  "一色三节高",
+  "全大",
+  "全中",
+  "全小",
+  "清龙",
+  "三色双龙会",
+  "一色三步高",
+  "一色三连环",
+  "全带五",
+  "三同刻",
+  "三暗刻",
+  "全不靠",
+  "组合龙",
+  "大于五",
+  "小于五",
+  "三风刻",
+  "花龙",
+  "推不倒",
+  "三色三同顺",
+  "三色三节高",
+  "无番和",
+  "妙手回春",
+  "海底捞月",
+  "杠上开花",
+  "抢杠和",
+  "碰碰和",
+  "混一色",
+  "三色三步高",
+  "五门齐",
+  "全求人",
+  "双暗杠",
+  "双箭刻",
+  "全带幺",
+  "不求人",
+  "双明杠",
+  "和绝张",
+  "箭刻",
+  "圈风刻",
+  "门风刻",
+  "门前清",
+  "平和",
+  "四归一",
+  "双同刻",
+  "双暗刻",
+  "暗杠",
+  "断幺",
+  "一般高",
+  "喜相逢",
+  "连六",
+  "老少副",
+  "幺九刻",
+  "明杠",
+  "缺一门",
+  "无字",
+  "独听・边张",
+  "独听・嵌张",
+  "独听・单钓",
+  "自摸",
+  "花牌",
+  "明暗杠",
+  "※ 天和",
+  "※ 地和",
+  "※ 人和Ⅰ",
+  "※ 人和Ⅱ"
+];
+
+const WINDS = ["E", "S", "W", "N"];
+
+const SEAT_PLAYER_ORDERS = [
+  [0, 1, 2, 3],
+  [1, 2, 3, 0],
+  [2, 3, 0, 1],
+  [3, 0, 1, 2],
+  [1, 0, 3, 2],
+  [0, 3, 2, 1],
+  [3, 2, 1, 0],
+  [2, 1, 0, 3],
+  [2, 3, 1, 0],
+  [3, 1, 0, 2],
+  [1, 0, 2, 3],
+  [0, 2, 3, 1],
+  [3, 2, 0, 1],
+  [2, 0, 1, 3],
+  [0, 1, 3, 2],
+  [1, 3, 2, 0]
+];
+
+module.exports = {
+  FAN_NAMES,
+  SEAT_PLAYER_ORDERS,
+  WINDS
+};
+
+
+/***/ },
+
+/***/ "./node_modules/tziakcha-fetcher/lib/core/network/index.js"
+(module, __unused_webpack_exports, __webpack_require__) {
+
+
+
+const DEFAULT_BASE_URL = "https://tziakcha.net";
+
+function getFetch(options = {}) {
+  const fetchImpl = options.fetch || __webpack_require__.g.fetch;
+  if (typeof fetchImpl !== "function") {
+    throw new Error("当前环境没有 fetch，请通过 options.fetch 注入");
+  }
+
+  return fetchImpl;
+}
+
+function buildUrl(path, options = {}) {
+  return new URL(path, options.baseUrl || DEFAULT_BASE_URL).toString();
+}
+
+function mergeHeaders(options = {}, headers = {}) {
+  return {
+    ...(options.headers || {}),
+    ...headers
+  };
+}
+
+function assertOk(response, endpoint) {
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} for ${endpoint}`);
+  }
+}
+
+module.exports = {
+  DEFAULT_BASE_URL,
+  assertOk,
+  buildUrl,
+  getFetch,
+  mergeHeaders
+};
+
+
+/***/ },
+
+/***/ "./node_modules/tziakcha-fetcher/lib/core/tiles/index.js"
+(module) {
+
+
+
+function decodeWallHex(wallHex) {
+  if (typeof wallHex !== "string" || wallHex.length % 2 !== 0) {
+    throw new Error("wall hex 必须是偶数长度字符串");
+  }
+
+  const result = [];
+  for (let index = 0; index < wallHex.length; index += 2) {
+    const hexPair = wallHex.slice(index, index + 2);
+    if (!/^[\da-fA-F]{2}$/.test(hexPair)) {
+      throw new Error("wall hex 包含非法十六进制字符");
+    }
+
+    const parsed = Number.parseInt(hexPair, 16);
+
+    result.push(parsed);
+  }
+
+  return result;
+}
+
+function tileIdToBase(tileId) {
+  return tileId >> 2;
+}
+
+function tileIdToGbTile(tileId) {
+  if (tileId < 108) {
+    return String((tileIdToBase(tileId) % 9) + 1);
+  }
+
+  if (tileId < 136) {
+    return ["E", "S", "W", "N", "C", "F", "P"][(tileId - 108) >> 2];
+  }
+
+  return ["a", "b", "c", "d", "e", "f", "g", "h"][tileId - 136];
+}
+
+function groupHandToGbString(tileIds) {
+  const groups = {
+    m: [],
+    p: [],
+    s: [],
+    z: []
+  };
+
+  for (const tileId of [...tileIds].sort((left, right) => left - right)) {
+    if (tileId < 36) {
+      groups.m.push(tileIdToGbTile(tileId));
+    } else if (tileId < 72) {
+      groups.s.push(tileIdToGbTile(tileId));
+    } else if (tileId < 108) {
+      groups.p.push(tileIdToGbTile(tileId));
+    } else if (tileId < 136) {
+      groups.z.push(tileIdToGbTile(tileId));
+    }
+  }
+
+  return [
+    groups.m.length ? `${groups.m.join("")}m` : "",
+    groups.p.length ? `${groups.p.join("")}p` : "",
+    groups.s.length ? `${groups.s.join("")}s` : "",
+    groups.z.join("")
+  ].join("");
+}
+
+module.exports = {
+  decodeWallHex,
+  groupHandToGbString,
+  tileIdToBase,
+  tileIdToGbTile
+};
+
+
+/***/ },
+
+/***/ "./node_modules/tziakcha-fetcher/lib/record/actions.js"
+(module, __unused_webpack_exports, __webpack_require__) {
+
+
+
+const { ACTION_TYPES, ACTION_TYPE_NAMES } = __webpack_require__("./node_modules/tziakcha-fetcher/lib/core/config/actions.js");
+
+function decodeDetail(type, data) {
+  switch (type) {
+    case ACTION_TYPES.FLOWER_REPLACE:
+      return {
+        drawnTileId: data & 0xff,
+        flowerTileId: ((data >> 8) & 0x0f) + 136,
+        auto: Boolean(data & 0x1000)
+      };
+    case ACTION_TYPES.DISCARD:
+      return {
+        tileId: data & 0xff,
+        handPlayed: Boolean((data >> 8) & 1),
+        playMode: (data >> 9) & 3
+      };
+    case ACTION_TYPES.CHI: {
+      const tileBase = (data & 0x3f) << 2;
+      const offsets = [(data >> 10) & 3, (data >> 12) & 3, (data >> 14) & 3];
+
+      return {
+        baseTileId: tileBase,
+        tileBase,
+        offerDirection: (data >> 6) & 3,
+        offsets,
+        candidateTileIds: [
+          tileBase - 4 + offsets[0],
+          tileBase + offsets[1],
+          tileBase + 4 + offsets[2]
+        ]
+      };
+    }
+
+    case ACTION_TYPES.PENG: {
+      const tileBase = (data & 0x3f) << 2;
+      const offset = (data >> 10) & 3;
+
+      return {
+        baseTileId: tileBase,
+        tileBase,
+        offerDirection: (data >> 6) & 3,
+        offset,
+        actualTileId: tileBase + offset
+      };
+    }
+
+    case ACTION_TYPES.GANG: {
+      const tileBase = (data & 0x3f) << 2;
+      const offerDirection = (data >> 6) & 3;
+      const offset = (data >> 10) & 3;
+
+      return {
+        baseTileId: tileBase,
+        tileBase,
+        offerDirection,
+        offset,
+        actualTileId: tileBase + offset,
+        promoted: (data & 0x0300) === 0x0300,
+        concealed: offerDirection === 0
+      };
+    }
+
+    case ACTION_TYPES.WIN:
+      return {
+        auto: Boolean(data & 1),
+        fan: data >> 1
+      };
+    case ACTION_TYPES.DRAW:
+      return {
+        tileId: data & 0xff,
+        backward: Boolean(data & 0x0100)
+      };
+    case ACTION_TYPES.PASS:
+      return {
+        mode: data & 3
+      };
+    default:
+      return {};
+  }
+}
+
+function decodeTziakchaAction(action) {
+  if (!Array.isArray(action) || action.length < 3) {
+    throw new Error("tziakcha action 必须是 [combined, data, time] 数组");
+  }
+
+  const [combined, data, time] = action;
+  if (
+    typeof combined !== "number" ||
+    typeof data !== "number" ||
+    typeof time !== "number"
+  ) {
+    throw new Error("tziakcha action combined/data/time 必须是数字");
+  }
+
+  const type = combined & 0x0f;
+
+  return {
+    playerIndex: (combined >> 4) & 3,
+    type,
+    typeName: ACTION_TYPE_NAMES[type] || `unknown(${type})`,
+    data,
+    time,
+    detail: decodeDetail(type, data)
+  };
+}
+
+module.exports = {
+  ACTION_TYPES,
+  decodeTziakchaAction
+};
+
+
+/***/ },
+
+/***/ "./node_modules/tziakcha-fetcher/lib/record/decompress-browser.js"
+(module, __unused_webpack_exports, __webpack_require__) {
+
+
+/* global self, window */
+
+const root =
+  (typeof __webpack_require__.g !== "undefined" && __webpack_require__.g) ||
+  (typeof window !== "undefined" && window) ||
+  (typeof self !== "undefined" && self) ||
+  {};
+
+function decodeBase64(input) {
+  if (typeof Buffer !== "undefined") {
+    return Uint8Array.from(Buffer.from(input, "base64"));
+  }
+
+  if (typeof root.atob !== "function") {
+    throw new Error("当前环境不支持 base64 解码");
+  }
+
+  const binary = root.atob(input);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return bytes;
+}
+
+async function decompressZlibBase64(input) {
+  if (typeof root.DecompressionStream !== "function") {
+    throw new Error('当前环境不支持 DecompressionStream("deflate")');
+  }
+
+  const stream = new root.Blob([decodeBase64(input)])
+    .stream()
+    .pipeThrough(new root.DecompressionStream("deflate"));
+  const buffer = await new root.Response(stream).arrayBuffer();
+
+  return new TextDecoder("utf-8").decode(buffer).replace(/\0/g, "");
+}
+
+module.exports = {
+  decompressZlibBase64
+};
+
+
+/***/ },
+
+/***/ "./node_modules/tziakcha-fetcher/lib/record/fetch-browser.js"
+(module, __unused_webpack_exports, __webpack_require__) {
+
+
+
+const { createRecordFetchApi } = __webpack_require__("./node_modules/tziakcha-fetcher/lib/record/shared-fetch.js");
+const { decompressZlibBase64 } = __webpack_require__("./node_modules/tziakcha-fetcher/lib/record/decompress-browser.js");
+
+module.exports = createRecordFetchApi(decompressZlibBase64);
+
+
+/***/ },
+
+/***/ "./node_modules/tziakcha-fetcher/lib/record/index.js"
+(module, __unused_webpack_exports, __webpack_require__) {
+
+
+
+const { decodeTziakchaAction } = __webpack_require__("./node_modules/tziakcha-fetcher/lib/record/actions.js");
+const {
+  decompressZlibBase64,
+  fetchTziakchaRecord,
+  fetchTziakchaRecordStep
+} = __webpack_require__("./node_modules/tziakcha-fetcher/lib/record/fetch-browser.js");
+const { simulateTziakchaRecord } = __webpack_require__("./node_modules/tziakcha-fetcher/lib/record/simulate.js");
+const {
+  extractTziakchaRoundWinInfos,
+  parseTziakchaWinFanItems
+} = __webpack_require__("./node_modules/tziakcha-fetcher/lib/record/win.js");
+
+module.exports = {
+  decodeAction: decodeTziakchaAction,
+  decompress: decompressZlibBase64,
+  extractWins: extractTziakchaRoundWinInfos,
+  fetch: fetchTziakchaRecord,
+  fetchStep: fetchTziakchaRecordStep,
+  parseWinFanItems: parseTziakchaWinFanItems,
+  simulate: simulateTziakchaRecord
+};
+
+
+/***/ },
+
+/***/ "./node_modules/tziakcha-fetcher/lib/record/shared-fetch.js"
+(module, __unused_webpack_exports, __webpack_require__) {
+
+
+
+const {
+  assertOk,
+  buildUrl,
+  getFetch,
+  mergeHeaders
+} = __webpack_require__("./node_modules/tziakcha-fetcher/lib/core/network/index.js");
+
+async function decodeRecordStep(recordId, raw, decompressZlibBase64, options) {
+  const normalizedOptions = options || {};
+
+  if (raw.script === "<Decoded>" && raw.step && typeof raw.step === "object") {
+    return raw.step;
+  }
+
+  if (typeof raw.script !== "string" || !raw.script) {
+    throw new Error(`record ${recordId} 缺少 script`);
+  }
+
+  const decode = normalizedOptions.decompressZlibBase64 || decompressZlibBase64;
+
+  try {
+    return JSON.parse(await decode(raw.script));
+  } catch (error) {
+    throw new Error(`record ${recordId} script 解码失败: ${error.message}`);
+  }
+}
+
+function createRecordFetchApi(decompressZlibBase64) {
+  async function fetchTziakchaRecord(recordId, options = {}) {
+    const endpoint = "/_qry/record/";
+    const response = await getFetch(options)(buildUrl(endpoint, options), {
+      method: "POST",
+      headers: mergeHeaders(options, {
+        "content-type": "application/x-www-form-urlencoded; charset=UTF-8"
+      }),
+      body: new URLSearchParams({ id: recordId }).toString()
+    });
+    assertOk(response, endpoint);
+
+    const raw = await response.json();
+    const step = await decodeRecordStep(
+      recordId,
+      raw,
+      decompressZlibBase64,
+      options
+    );
+
+    return {
+      id: raw.id || recordId,
+      belongs: raw.belongs,
+      script: "<Decoded>",
+      step,
+      raw
+    };
+  }
+
+  async function fetchTziakchaRecordStep(recordId, options = {}) {
+    const record = await fetchTziakchaRecord(recordId, options);
+    return record.step;
+  }
+
+  return {
+    decompressZlibBase64,
+    decodeRecordStep,
+    fetchTziakchaRecord,
+    fetchTziakchaRecordStep
+  };
+}
+
+module.exports = {
+  createRecordFetchApi,
+  decodeRecordStep
+};
+
+
+/***/ },
+
+/***/ "./node_modules/tziakcha-fetcher/lib/record/simulate.js"
+(module, __unused_webpack_exports, __webpack_require__) {
+
+
+
+const { WINDS } = __webpack_require__("./node_modules/tziakcha-fetcher/lib/core/config/game.js");
+const { decodeWallHex, tileIdToBase } = __webpack_require__("./node_modules/tziakcha-fetcher/lib/core/tiles/index.js");
+const { ACTION_TYPES, decodeTziakchaAction } = __webpack_require__("./node_modules/tziakcha-fetcher/lib/record/actions.js");
+const {
+  cloneGameState,
+  createInitialGameState,
+  setupWallAndDeal
+} = __webpack_require__("./node_modules/tziakcha-fetcher/lib/record/state.js");
+
+function getStep(record) {
+  if (!record || !record.step || typeof record.step !== "object") {
+    throw new Error("record 缺少 step");
+  }
+
+  return record.step;
+}
+
+function validateStep(step) {
+  if (typeof step.w !== "string") {
+    throw new Error("step.w 必须是牌墙十六进制字符串");
+  }
+
+  if (typeof step.d !== "number") {
+    throw new Error("step.d 必须是数字");
+  }
+
+  if (!Array.isArray(step.a)) {
+    throw new Error("step.a 必须是动作数组");
+  }
+}
+
+function getDiceArray(encodedDice) {
+  return [
+    encodedDice & 0x0f,
+    (encodedDice >> 4) & 0x0f,
+    (encodedDice >> 8) & 0x0f,
+    (encodedDice >> 12) & 0x0f
+  ];
+}
+
+function setLastActionFlags(state, wasKong, wasAddedKong) {
+  state.lastActionWasKong = wasKong;
+  state.lastActionWasAddedKong = wasAddedKong;
+}
+
+function removeLastDiscard(state, playerIndex) {
+  if (playerIndex === null || playerIndex === undefined) {
+    return;
+  }
+
+  const discards = state.players[playerIndex].discards;
+  if (discards.length === 0) {
+    return;
+  }
+
+  discards.pop();
+}
+
+function removeTileFromHand(player, tileId, playerIndex) {
+  const tileIndex = player.handTiles.indexOf(tileId);
+  if (tileIndex >= 0) {
+    player.handTiles.splice(tileIndex, 1);
+    return tileId;
+  }
+
+  const tileBase = tileIdToBase(tileId);
+  const sameBaseIndex = player.handTiles.findIndex(
+    handTileId => tileIdToBase(handTileId) === tileBase
+  );
+  if (sameBaseIndex < 0) {
+    throw new Error(`玩家 ${playerIndex} 手牌中不存在牌 ${tileId}`);
+  }
+
+  return player.handTiles.splice(sameBaseIndex, 1)[0];
+}
+
+function removeTileByBaseFromHand(player, tileBase, playerIndex) {
+  const expectedBase = tileIdToBase(tileBase);
+  const tileIndex = player.handTiles.findIndex(
+    tileId => tileIdToBase(tileId) === expectedBase
+  );
+  if (tileIndex < 0) {
+    throw new Error(`玩家 ${playerIndex} 手牌中不存在牌型 ${tileBase}`);
+  }
+
+  return player.handTiles.splice(tileIndex, 1)[0];
+}
+
+function removeTilesByBaseFromHand(player, tileBase, count, playerIndex) {
+  const removed = [];
+  for (let index = 0; index < count; index += 1) {
+    removed.push(removeTileByBaseFromHand(player, tileBase, playerIndex));
+  }
+
+  return removed;
+}
+
+function resolveOfferPlayerIndex(state, action) {
+  if (action.type === ACTION_TYPES.CHI) {
+    return (action.playerIndex + 3) % 4;
+  }
+
+  return (action.playerIndex - action.detail.offerDirection + 4) % 4;
+}
+
+function applyDiscard(state, action, player) {
+  removeTileFromHand(player, action.detail.tileId, action.playerIndex);
+  player.discards.push(action.detail.tileId);
+  state.lastDiscardTile = action.detail.tileId;
+  state.lastDiscardPlayerIndex = action.playerIndex;
+  setLastActionFlags(state, false, false);
+}
+
+function applyDraw(state, action, player) {
+  player.handTiles.push(action.detail.tileId);
+  player.handTiles.sort((left, right) => left - right);
+  player.lastDrawTile = action.detail.tileId;
+  state.currentPlayerIndex = action.playerIndex;
+
+  if (action.detail.backward) {
+    state.wallBackIndex -= 1;
+  } else {
+    state.wallFrontIndex += 1;
+  }
+
+  setLastActionFlags(state, false, false);
+}
+
+function applyFlowerReplacement(state, action, player) {
+  const flowerTileId = action.detail.flowerTileId;
+  removeTileFromHand(player, flowerTileId, action.playerIndex);
+  player.flowerCount += 1;
+  player.flowerTiles.push(flowerTileId);
+  player.handTiles.push(action.detail.drawnTileId);
+  player.handTiles.sort((left, right) => left - right);
+  player.lastDrawTile = action.detail.drawnTileId;
+  state.currentPlayerIndex = action.playerIndex;
+  state.wallBackIndex -= 1;
+  setLastActionFlags(state, false, false);
+}
+
+function applyChi(state, action, player) {
+  if (action.data === 0) {
+    state.currentPlayerIndex = action.playerIndex;
+    setLastActionFlags(state, false, false);
+    return;
+  }
+
+  const offeredTileId = state.lastDiscardTile;
+  const offerPlayerIndex = resolveOfferPlayerIndex(state, action);
+
+  removeLastDiscard(state, offerPlayerIndex);
+
+  let candidateTileIds = [...action.detail.candidateTileIds];
+  if (candidateTileIds[0] < 0) {
+    const tileBase = offeredTileId;
+    candidateTileIds = [
+      tileBase - 4 + action.detail.offsets[0],
+      tileBase + action.detail.offsets[1],
+      tileBase + 4 + action.detail.offsets[2]
+    ];
+  }
+
+  const consumedTileIds = [];
+  for (const tileId of candidateTileIds) {
+    if (tileIdToBase(tileId) !== tileIdToBase(offeredTileId)) {
+      consumedTileIds.push(
+        removeTileByBaseFromHand(player, tileId, action.playerIndex)
+      );
+    }
+  }
+
+  const tileIds = candidateTileIds;
+  let offerSequence = tileIds.findIndex(
+    tileId => tileIdToBase(tileId) === tileIdToBase(offeredTileId)
+  );
+  if (offerSequence < 0) {
+    offerSequence = 0;
+  }
+
+  player.melds.push({
+    type: "chi",
+    tileIds,
+    consumedTileIds,
+    offerDirection: action.detail.offerDirection,
+    offerSequence,
+    offeredTileId
+  });
+  state.currentPlayerIndex = action.playerIndex;
+  setLastActionFlags(state, false, false);
+}
+
+function applyPeng(state, action, player) {
+  if (action.data === 0) {
+    state.currentPlayerIndex = action.playerIndex;
+    setLastActionFlags(state, false, false);
+    return;
+  }
+
+  const offeredTileId = state.lastDiscardTile;
+  const offerPlayerIndex = resolveOfferPlayerIndex(state, action);
+
+  removeLastDiscard(state, offerPlayerIndex);
+  const tileIds = removeTilesByBaseFromHand(
+    player,
+    action.detail.tileBase,
+    2,
+    action.playerIndex
+  );
+  tileIds.push(offeredTileId);
+  tileIds.sort((left, right) => left - right);
+
+  player.melds.push({
+    type: "peng",
+    tileBase: action.detail.tileBase,
+    tileIds,
+    offerDirection: action.detail.offerDirection,
+    offerSequence: action.detail.offerDirection + 1,
+    offeredTileId
+  });
+  state.currentPlayerIndex = action.playerIndex;
+  setLastActionFlags(state, false, false);
+}
+
+function applyAddedKong(state, action, player) {
+  let removedTileId;
+  try {
+    removedTileId = removeTileFromHand(
+      player,
+      action.detail.actualTileId,
+      action.playerIndex
+    );
+  } catch {
+    removedTileId = removeTileByBaseFromHand(
+      player,
+      action.detail.tileBase,
+      action.playerIndex
+    );
+  }
+
+  const meld = player.melds.find(
+    item =>
+      item.type === "peng" &&
+      tileIdToBase(item.tileBase) === tileIdToBase(action.detail.tileBase)
+  );
+
+  if (!meld) {
+    throw new Error(
+      `玩家 ${action.playerIndex} 没有可升级为加杠的碰 ${action.detail.tileBase}`
+    );
+  }
+
+  meld.type = "gang";
+  meld.upgradedFromPeng = true;
+  meld.added = true;
+  meld.concealed = false;
+  meld.tileIds = [...(meld.tileIds || []), removedTileId].sort(
+    (left, right) => left - right
+  );
+  state.lastDiscardTile = removedTileId;
+  state.lastDiscardPlayerIndex = action.playerIndex;
+  state.currentPlayerIndex = action.playerIndex;
+  setLastActionFlags(state, true, true);
+}
+
+function applyGang(state, action, player) {
+  state.currentPlayerIndex = action.playerIndex;
+
+  if (action.data === 0) {
+    setLastActionFlags(state, false, false);
+    return;
+  }
+
+  if (action.detail.promoted) {
+    applyAddedKong(state, action, player);
+    return;
+  }
+
+  let offeredTileId = null;
+  let offerSequence = 0;
+  let tileIds;
+
+  if (action.detail.concealed) {
+    tileIds = removeTilesByBaseFromHand(
+      player,
+      action.detail.tileBase,
+      4,
+      action.playerIndex
+    );
+  } else {
+    offeredTileId = state.lastDiscardTile;
+    const offerPlayerIndex = resolveOfferPlayerIndex(state, action);
+    removeLastDiscard(state, offerPlayerIndex);
+    tileIds = removeTilesByBaseFromHand(
+      player,
+      action.detail.tileBase,
+      3,
+      action.playerIndex
+    );
+    tileIds.push(offeredTileId);
+    offerSequence = action.detail.offerDirection + 1;
+  }
+
+  tileIds.sort((left, right) => left - right);
+  player.melds.push({
+    type: "gang",
+    tileBase: action.detail.tileBase,
+    tileIds,
+    offerDirection: action.detail.offerDirection,
+    offerSequence,
+    offeredTileId,
+    concealed: action.detail.concealed,
+    upgradedFromPeng: false,
+    added: false
+  });
+  setLastActionFlags(state, true, false);
+}
+
+function applyAction(state, action) {
+  const player = state.players[action.playerIndex];
+
+  switch (action.type) {
+    case ACTION_TYPES.DISCARD:
+      applyDiscard(state, action, player);
+      break;
+    case ACTION_TYPES.DRAW:
+      applyDraw(state, action, player);
+      break;
+    case ACTION_TYPES.FLOWER_REPLACE:
+      applyFlowerReplacement(state, action, player);
+      break;
+    case ACTION_TYPES.CHI:
+      applyChi(state, action, player);
+      break;
+    case ACTION_TYPES.PENG:
+      applyPeng(state, action, player);
+      break;
+    case ACTION_TYPES.GANG:
+      applyGang(state, action, player);
+      break;
+    default:
+      setLastActionFlags(state, false, false);
+      break;
+  }
+
+  player.handTiles.sort((left, right) => left - right);
+}
+
+function simulateTziakchaRecord(record) {
+  const step = getStep(record);
+  validateStep(step);
+
+  const state = createInitialGameState();
+  const roundWind = WINDS[Math.floor((step.i || 0) / 4) % 4];
+  state.roundWind = roundWind;
+
+  setupWallAndDeal(state, {
+    wall: decodeWallHex(step.w),
+    dice: getDiceArray(step.d),
+    dealerIndex: 0
+  });
+  state.roundWind = roundWind;
+
+  const steps = step.a.map((actionTuple, index) => {
+    const action = decodeTziakchaAction(actionTuple);
+    const before = cloneGameState(state);
+    applyAction(state, action);
+
+    return {
+      index,
+      action,
+      before,
+      after: cloneGameState(state)
+    };
+  });
+
+  return {
+    recordId: record.id,
+    initialHands: state.initialHands.map(hand => [...hand]),
+    roundWind,
+    resultFlags: {
+      winnerMask: (step.b || 0) & 0x0f,
+      discarderMask: ((step.b || 0) >> 4) & 0x0f
+    },
+    state,
+    steps
+  };
+}
+
+module.exports = {
+  simulateTziakchaRecord
+};
+
+
+/***/ },
+
+/***/ "./node_modules/tziakcha-fetcher/lib/record/state.js"
+(module) {
+
+
+
+function createPlayerState() {
+  return {
+    handTiles: [],
+    melds: [],
+    discards: [],
+    flowerTiles: [],
+    flowerCount: 0,
+    initialHandTiles: [],
+    lastDrawTile: null
+  };
+}
+
+function createInitialGameState() {
+  return {
+    players: Array.from({ length: 4 }, () => createPlayerState()),
+    initialHands: [[], [], [], []],
+    wall: [],
+    wallFrontIndex: 0,
+    wallBackIndex: -1,
+    dealerIndex: 0,
+    currentPlayerIndex: -1,
+    lastDiscardTile: null,
+    lastDiscardPlayerIndex: null,
+    lastActionWasKong: false,
+    lastActionWasAddedKong: false,
+    roundIndex: 0,
+    roundWind: null
+  };
+}
+
+function cloneGameState(state) {
+  return JSON.parse(JSON.stringify(state));
+}
+
+function normalizeDice(dice) {
+  if (!Array.isArray(dice) || dice.length !== 4) {
+    return [0, 0, 0, 0];
+  }
+
+  return dice.map(value => (typeof value === "number" ? value : 0));
+}
+
+function setupWallAndDeal(state, { wall, dice, dealerIndex }) {
+  const normalizedDice = normalizeDice(dice);
+  const wallBreakPos =
+    (dealerIndex - (normalizedDice[0] + normalizedDice[1] - 1) + 12) % 4;
+  let startPos =
+    wallBreakPos * 36 +
+    (normalizedDice[0] +
+      normalizedDice[1] +
+      normalizedDice[2] +
+      normalizedDice[3]) *
+      2;
+  startPos %= wall.length;
+
+  state.wall = [...wall.slice(startPos), ...wall.slice(0, startPos)];
+  state.wallFrontIndex = 0;
+  state.wallBackIndex = state.wall.length - 1;
+  state.dealerIndex = dealerIndex;
+  state.currentPlayerIndex = dealerIndex;
+  state.lastDiscardTile = null;
+  state.lastDiscardPlayerIndex = null;
+  state.lastActionWasKong = false;
+  state.lastActionWasAddedKong = false;
+
+  for (const player of state.players) {
+    player.handTiles = [];
+    player.melds = [];
+    player.discards = [];
+    player.flowerTiles = [];
+    player.flowerCount = 0;
+    player.initialHandTiles = [];
+    player.lastDrawTile = null;
+  }
+
+  for (let round = 0; round < 3; round += 1) {
+    for (let offset = 0; offset < 4; offset += 1) {
+      const playerIndex = (dealerIndex + offset) % 4;
+      for (let draw = 0; draw < 4; draw += 1) {
+        state.players[playerIndex].handTiles.push(
+          state.wall[state.wallFrontIndex]
+        );
+        state.wallFrontIndex += 1;
+      }
+    }
+  }
+
+  for (let offset = 0; offset < 4; offset += 1) {
+    const playerIndex = (dealerIndex + offset) % 4;
+    state.players[playerIndex].handTiles.push(state.wall[state.wallFrontIndex]);
+    state.wallFrontIndex += 1;
+  }
+
+  state.players[dealerIndex].handTiles.push(state.wall[state.wallFrontIndex]);
+  state.wallFrontIndex += 1;
+
+  state.initialHands = state.players.map(player => {
+    player.handTiles.sort((left, right) => left - right);
+    player.initialHandTiles = [...player.handTiles];
+    return [...player.initialHandTiles];
+  });
+
+  return state;
+}
+
+module.exports = {
+  cloneGameState,
+  createInitialGameState,
+  setupWallAndDeal
+};
+
+
+/***/ },
+
+/***/ "./node_modules/tziakcha-fetcher/lib/record/win.js"
+(module, __unused_webpack_exports, __webpack_require__) {
+
+
+
+const { FAN_NAMES, SEAT_PLAYER_ORDERS } = __webpack_require__("./node_modules/tziakcha-fetcher/lib/core/config/game.js");
+
+function toNumber(value) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+function parseTziakchaWinFanItems(rawT) {
+  if (!rawT || typeof rawT !== "object") {
+    return [];
+  }
+
+  return Object.entries(rawT)
+    .map(([fanIndexRaw, encodedRaw]) => {
+      const fanIndex = toNumber(fanIndexRaw);
+      const encoded = toNumber(encodedRaw);
+      if (fanIndex === null || encoded === null) {
+        return null;
+      }
+
+      const fanIndexInt = Math.floor(fanIndex);
+      const encodedInt = Math.floor(encoded);
+      const unitFan = encodedInt & 0xff;
+      const count = (encodedInt >> 8) + 1;
+
+      return {
+        fanIndex: fanIndexInt,
+        fanName: FAN_NAMES[fanIndexInt] || `番种${fanIndexInt}`,
+        count,
+        unitFan,
+        totalFan: unitFan * count
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => left.fanIndex - right.fanIndex);
+}
+
+function getSeatToPlayerOrder(roundIndex) {
+  const index =
+    ((roundIndex % SEAT_PLAYER_ORDERS.length) + SEAT_PLAYER_ORDERS.length) %
+    SEAT_PLAYER_ORDERS.length;
+  return SEAT_PLAYER_ORDERS[index] || [0, 1, 2, 3];
+}
+
+function resolvePlayerIndexByName(session, seatPlayer) {
+  const seatName = seatPlayer?.n || seatPlayer?.name;
+  if (!seatName || !Array.isArray(session.players)) {
+    return null;
+  }
+
+  const playerIndex = session.players.findIndex(
+    player => (player?.name || player?.n) === seatName
+  );
+  return playerIndex >= 0 ? playerIndex : null;
+}
+
+function getSeatToPlayerOrderForRecord(session, record) {
+  const stepPlayers = record?.step?.p;
+  if (Array.isArray(stepPlayers) && stepPlayers.length === 4) {
+    const resolved = stepPlayers.map(player =>
+      resolvePlayerIndexByName(session, player)
+    );
+
+    if (resolved.every(index => Number.isInteger(index) && index >= 0)) {
+      return resolved;
+    }
+  }
+
+  return getSeatToPlayerOrder(record?.index || 0);
+}
+
+function getPlayerName(session, playerIndex) {
+  return session.players[playerIndex]?.name || `Seat ${playerIndex}`;
+}
+
+function extractTziakchaRoundWinInfos(session) {
+  const rounds = [];
+
+  for (const record of session.records || []) {
+    const stepData = record.step || {};
+    const resultBits = typeof stepData.b === "number" ? stepData.b : 0;
+    const winnerMask = resultBits & 0x0f;
+    const discarderMask = (resultBits >> 4) & 0x0f;
+    if (!winnerMask) {
+      continue;
+    }
+
+    const seatToPlayerOrder = getSeatToPlayerOrderForRecord(session, record);
+    const winners = [];
+
+    for (let stepSeat = 0; stepSeat < 4; stepSeat += 1) {
+      if (((winnerMask >> stepSeat) & 1) === 0) {
+        continue;
+      }
+
+      const playerIndex = seatToPlayerOrder[stepSeat];
+      const seatY = Array.isArray(stepData.y) ? stepData.y[stepSeat] : null;
+      const fanItems = parseTziakchaWinFanItems(seatY?.t);
+      const totalFan =
+        typeof seatY?.f === "number"
+          ? seatY.f
+          : fanItems.reduce((sum, item) => sum + item.totalFan, 0);
+
+      winners.push({
+        playerName: getPlayerName(session, playerIndex),
+        playerIndex,
+        totalFan,
+        fanItems
+      });
+    }
+
+    const discarders = [];
+    for (let stepSeat = 0; stepSeat < 4; stepSeat += 1) {
+      if (((discarderMask >> stepSeat) & 1) === 0) {
+        continue;
+      }
+
+      const playerIndex = seatToPlayerOrder[stepSeat];
+      discarders.push({
+        playerName: getPlayerName(session, playerIndex),
+        playerIndex
+      });
+    }
+
+    rounds.push({
+      roundNo: record.index + 1,
+      recordId: record.id,
+      winners,
+      discarders,
+      selfDraw:
+        discarders.length === 0 ||
+        discarders.every(discarder =>
+          winners.some(winner => winner.playerIndex === discarder.playerIndex)
+        )
+    });
+  }
+
+  return rounds;
+}
+
+module.exports = {
+  FAN_NAMES,
+  SEAT_PLAYER_ORDERS,
+  extractTziakchaRoundWinInfos,
+  parseTziakchaWinFanItems
+};
+
+
+/***/ },
+
+/***/ "./node_modules/tziakcha-fetcher/lib/session/fetch.js"
+(module, __unused_webpack_exports, __webpack_require__) {
+
+
+
+const {
+  assertOk,
+  buildUrl,
+  getFetch,
+  mergeHeaders
+} = __webpack_require__("./node_modules/tziakcha-fetcher/lib/core/network/index.js");
+
+function asNumber(value) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+function extractPlayers(raw) {
+  if (!Array.isArray(raw.players)) {
+    return [];
+  }
+
+  return raw.players.map(player => ({
+    name: player.n || player.name || "",
+    id: player.i || player.id
+  }));
+}
+
+function extractRecords(raw) {
+  if (!Array.isArray(raw.records)) {
+    return [];
+  }
+
+  return raw.records
+    .map((record, index) => {
+      const id = record.i || record.id;
+      return id ? { id, index } : null;
+    })
+    .filter(Boolean);
+}
+
+function getIsFinished(raw, records, periods) {
+  if (periods !== null && periods > 0) {
+    return records.length === periods;
+  }
+
+  if (raw.finished === true || raw.isFinished === true) {
+    return true;
+  }
+
+  const finishTime = asNumber(raw.finish_time || raw.finishTime);
+  if (finishTime !== null && finishTime > 0) {
+    return true;
+  }
+
+  const progress = asNumber(raw.progress);
+  if (progress !== null && periods !== null && periods > 0) {
+    return progress >= periods - 1;
+  }
+
+  return false;
+}
+
+async function fetchTziakchaSession(sessionId, options = {}) {
+  const endpoint = "/_qry/game/";
+  const response = await getFetch(options)(
+    buildUrl(`${endpoint}?id=${encodeURIComponent(sessionId)}`, options),
+    {
+      method: "POST",
+      credentials: "include",
+      headers: mergeHeaders(options)
+    }
+  );
+  assertOk(response, endpoint);
+
+  const raw = await response.json();
+  const records = extractRecords(raw);
+  const periods = asNumber(raw.periods);
+
+  return {
+    sessionId,
+    players: extractPlayers(raw),
+    records,
+    periods,
+    isFinished: getIsFinished(raw, records, periods),
+    raw
+  };
+}
+
+module.exports = {
+  fetchTziakchaSession
+};
+
+
+/***/ },
+
+/***/ "./node_modules/tziakcha-fetcher/lib/session/index.js"
+(module, __unused_webpack_exports, __webpack_require__) {
+
+
+
+const { fetchTziakchaSession } = __webpack_require__("./node_modules/tziakcha-fetcher/lib/session/fetch.js");
+const { fetchTziakchaSessionRounds } = __webpack_require__("./node_modules/tziakcha-fetcher/lib/session/rounds.js");
+
+module.exports = {
+  fetch: fetchTziakchaSession,
+  fetchRounds: fetchTziakchaSessionRounds
+};
+
+
+/***/ },
+
+/***/ "./node_modules/tziakcha-fetcher/lib/session/rounds.js"
+(module, __unused_webpack_exports, __webpack_require__) {
+
+
+
+const { fetchTziakchaRecordStep } = __webpack_require__("./node_modules/tziakcha-fetcher/lib/record/fetch-browser.js");
+const { fetchTziakchaSession } = __webpack_require__("./node_modules/tziakcha-fetcher/lib/session/fetch.js");
+const { parseTziakchaSessionId } = __webpack_require__("./node_modules/tziakcha-fetcher/lib/url/index.js");
+
+async function fetchTziakchaSessionRounds(inputUrlOrId, options = {}) {
+  const sessionId = parseTziakchaSessionId(inputUrlOrId);
+  if (!sessionId) {
+    throw new Error("无法从输入中解析 tziakcha 对局 id");
+  }
+
+  const session = await fetchTziakchaSession(sessionId, options);
+  const records = await Promise.all(
+    session.records.map(async record => ({
+      ...record,
+      step: await fetchTziakchaRecordStep(record.id, options)
+    }))
+  );
+
+  return {
+    ...session,
+    records
+  };
+}
+
+module.exports = {
+  fetchTziakchaSessionRounds
+};
+
+
+/***/ },
+
+/***/ "./node_modules/tziakcha-fetcher/lib/url/index.js"
+(module) {
+
+
+
+function parseTziakchaSessionId(input) {
+  const trimmed = String(input || "").trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  if (!trimmed.includes("?") && !trimmed.includes("/")) {
+    return trimmed;
+  }
+
+  try {
+    const url = new URL(trimmed, "https://tziakcha.net");
+    return url.searchParams.get("id") || trimmed;
+  } catch {
+    return trimmed;
+  }
+}
+
+module.exports = {
+  parseTziakchaSessionId
+};
+
+
 /***/ }
 
 /******/ 	});
@@ -761,6 +2215,18 @@ module.exports = styleTagTransform;
 /******/ 				}
 /******/ 			}
 /******/ 		};
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/global */
+/******/ 	(() => {
+/******/ 		__webpack_require__.g = (function() {
+/******/ 			if (typeof globalThis === 'object') return globalThis;
+/******/ 			try {
+/******/ 				return this || new Function('return this')();
+/******/ 			} catch (e) {
+/******/ 				if (typeof window === 'object') return window;
+/******/ 			}
+/******/ 		})();
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
@@ -1901,365 +3367,155 @@ function mountGameFavoriteEntry(repository = createFavoritesRepository()) {
     return true;
 }
 
+// EXTERNAL MODULE: ./node_modules/tziakcha-fetcher/lib/record/index.js
+var record = __webpack_require__("./node_modules/tziakcha-fetcher/lib/record/index.js");
+var record_default = /*#__PURE__*/__webpack_require__.n(record);
 ;// ./src/shared/tziakcha-records/record.ts
 
-function getFetch(options) {
-    return options?.fetch ?? fetch;
-}
-function buildUrl(path, options) {
-    return options?.baseUrl ? new URL(path, options.baseUrl).toString() : path;
-}
-function base64ToBytes(input) {
-    const binary = atob(input);
-    const bytes = new Uint8Array(binary.length);
-    for (let index = 0; index < binary.length; index += 1) {
-        bytes[index] = binary.charCodeAt(index);
+const decompressZlibBase64 = (record_default()).decompress;
+function normalizeOptions(options) {
+    if (!options?.fetch || options.baseUrl) {
+        return options;
     }
-    return bytes;
-}
-async function decompressZlibBase64(input) {
-    const streamCtor = w.DecompressionStream;
-    if (!streamCtor) {
-        throw new Error("当前浏览器不支持 DecompressionStream");
-    }
-    const bytes = base64ToBytes(input);
-    const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-    const source = new Blob([buffer]).stream();
-    const decompressed = source.pipeThrough(new streamCtor("deflate"));
-    return await new Response(decompressed).text();
+    return {
+        ...options,
+        fetch: (input, init) => {
+            const normalizedInput = typeof input === "string" && input.startsWith("https://tziakcha.net/")
+                ? input.slice("https://tziakcha.net".length)
+                : input;
+            return options.fetch(normalizedInput, init);
+        },
+    };
 }
 async function fetchTziakchaRecordStep(recordId, options) {
-    const response = await getFetch(options)(buildUrl("/_qry/record/", options), {
-        method: "POST",
-        headers: {
-            "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-        },
-        body: new URLSearchParams({ id: recordId }).toString(),
-    });
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status} for /_qry/record/`);
+    return (await record_default().fetchStep(recordId, normalizeOptions(options)));
+}
+
+// EXTERNAL MODULE: ./node_modules/tziakcha-fetcher/lib/session/index.js
+var lib_session = __webpack_require__("./node_modules/tziakcha-fetcher/lib/session/index.js");
+var session_default = /*#__PURE__*/__webpack_require__.n(lib_session);
+// EXTERNAL MODULE: ./node_modules/tziakcha-fetcher/lib/url/index.js
+var url = __webpack_require__("./node_modules/tziakcha-fetcher/lib/url/index.js");
+;// ./src/shared/tziakcha-records/url.ts
+/* unused harmony import specifier */ var fetcherUrl;
+
+function parseTziakchaSessionId(input) {
+    const parsed = fetcherUrl.parseTziakchaSessionId(input);
+    if (!parsed) {
+        return null;
     }
-    const raw = (await response.json());
-    if (typeof raw.script !== "string" || !raw.script) {
-        throw new Error(`record ${recordId} 缺少 script`);
+    const trimmed = input.trim();
+    if ((trimmed.includes("?") || trimmed.includes("/")) && parsed === trimmed) {
+        try {
+            const url = new URL(trimmed, "https://tziakcha.net");
+            return url.searchParams.get("id");
+        }
+        catch {
+            return null;
+        }
     }
-    const decode = options?.decompressZlibBase64 ?? decompressZlibBase64;
-    const jsonText = await decode(raw.script);
-    return JSON.parse(jsonText);
+    return parsed;
 }
 
 ;// ./src/shared/tziakcha-records/rounds.ts
-/* unused harmony import specifier */ var rounds_fetchTziakchaRecordStep;
-/* unused harmony import specifier */ var fetchTziakchaSession;
-/* unused harmony import specifier */ var parseTziakchaSessionId;
+/* unused harmony import specifier */ var fetcherSession;
+/* unused harmony import specifier */ var rounds_parseTziakchaSessionId;
 
 
-
+function rounds_normalizeOptions(options) {
+    if (!options?.fetch || options.baseUrl) {
+        return options;
+    }
+    return {
+        ...options,
+        fetch: (input, init) => {
+            const normalizedInput = typeof input === "string" && input.startsWith("https://tziakcha.net/")
+                ? input.slice("https://tziakcha.net".length)
+                : input;
+            return options.fetch(normalizedInput, init);
+        },
+    };
+}
 async function fetchTziakchaSessionRounds(inputUrlOrId, options) {
-    const sessionId = parseTziakchaSessionId(inputUrlOrId);
+    const sessionId = rounds_parseTziakchaSessionId(inputUrlOrId);
     if (!sessionId) {
         throw new Error("无法从输入中解析雀渣对局 id");
     }
-    const session = await fetchTziakchaSession(sessionId, options);
-    const records = await Promise.all(session.records.map(async (record) => ({
-        ...record,
-        step: await rounds_fetchTziakchaRecordStep(record.id, options),
-    })));
+    const session = await fetcherSession.fetchRounds(sessionId, rounds_normalizeOptions(options));
     return {
-        ...session,
-        records,
+        sessionId: session.sessionId,
+        players: session.players.map((player) => ({
+            name: player.name,
+            id: typeof player.id === "string" || typeof player.id === "number"
+                ? String(player.id)
+                : undefined,
+        })),
+        records: session.records.map((record) => ({
+            id: record.id,
+            index: record.index,
+            step: record.step,
+        })),
+        periods: session.periods,
+        isFinished: session.isFinished,
     };
 }
 
 ;// ./src/shared/tziakcha-records/session.ts
-function session_getFetch(options) {
-    return options?.fetch ?? fetch;
-}
-function session_buildUrl(path, options) {
-    return options?.baseUrl ? new URL(path, options.baseUrl).toString() : path;
-}
-function asNumber(value) {
-    if (typeof value === "number" && Number.isFinite(value)) {
-        return value;
+
+function session_normalizeOptions(options) {
+    if (!options?.fetch || options.baseUrl) {
+        return options;
     }
-    if (typeof value === "string") {
-        const parsed = Number(value);
-        return Number.isFinite(parsed) ? parsed : null;
-    }
-    return null;
-}
-function extractPlayers(raw) {
-    if (!Array.isArray(raw.players)) {
-        return [];
-    }
-    return raw.players.map((item) => {
-        const player = item;
-        return {
-            name: player.n || player.name || "",
-            id: player.i || player.id,
-        };
-    });
-}
-function extractRecords(raw) {
-    if (!Array.isArray(raw.records)) {
-        return [];
-    }
-    return raw.records
-        .map((item, index) => {
-        const record = item;
-        const id = record.id || record.i;
-        return id ? { id, index } : null;
-    })
-        .filter((item) => Boolean(item));
-}
-function isFinished(raw, records, periods) {
-    if (periods !== null && periods > 0) {
-        return records.length === periods;
-    }
-    if (raw.finished === true || raw.isFinished === true) {
-        return true;
-    }
-    const finishTime = asNumber(raw.finish_time ?? raw.finishTime);
-    if (finishTime !== null && finishTime > 0) {
-        return true;
-    }
-    const progress = asNumber(raw.progress);
-    if (progress !== null && periods !== null && periods > 0) {
-        return progress >= periods - 1;
-    }
-    return false;
-}
-async function session_fetchTziakchaSession(sessionId, options) {
-    const response = await session_getFetch(options)(session_buildUrl(`/_qry/game/?id=${encodeURIComponent(sessionId)}`, options), {
-        method: "POST",
-        credentials: "include",
-    });
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status} for /_qry/game/`);
-    }
-    const raw = (await response.json());
-    const records = extractRecords(raw);
-    const periods = asNumber(raw.periods);
     return {
-        sessionId,
-        players: extractPlayers(raw),
-        records,
-        periods,
-        isFinished: isFinished(raw, records, periods),
+        ...options,
+        fetch: (input, init) => {
+            const normalizedInput = typeof input === "string" && input.startsWith("https://tziakcha.net/")
+                ? input.slice("https://tziakcha.net".length)
+                : input;
+            const headers = init && "headers" in init && init.headers
+                ? init.headers
+                : undefined;
+            const normalizedInit = headers && Object.keys(headers).length === 0
+                ? { ...init, headers: undefined }
+                : init;
+            return options.fetch(normalizedInput, {
+                ...normalizedInit,
+            });
+        },
+    };
+}
+async function fetchTziakchaSession(sessionId, options) {
+    const session = await session_default().fetch(sessionId, session_normalizeOptions(options));
+    return {
+        sessionId: session.sessionId,
+        players: session.players.map((player) => ({
+            name: player.name,
+            id: typeof player.id === "string" || typeof player.id === "number"
+                ? String(player.id)
+                : undefined,
+        })),
+        records: session.records.map((record) => ({
+            id: record.id,
+            index: record.index,
+        })),
+        periods: session.periods,
+        isFinished: session.isFinished,
     };
 }
 
+// EXTERNAL MODULE: ./node_modules/tziakcha-fetcher/lib/record/win.js
+var win = __webpack_require__("./node_modules/tziakcha-fetcher/lib/record/win.js");
+var win_default = /*#__PURE__*/__webpack_require__.n(win);
 ;// ./src/shared/tziakcha-records/win-info.ts
-const FAN_NAMES = [
-    "无",
-    "大四喜",
-    "大三元",
-    "绿一色",
-    "九莲宝灯",
-    "四杠",
-    "连七对",
-    "十三幺",
-    "清幺九",
-    "小四喜",
-    "小三元",
-    "字一色",
-    "四暗刻",
-    "一色双龙会",
-    "一色四同顺",
-    "一色四节高",
-    "一色四步高",
-    "一色四连环",
-    "三杠",
-    "混幺九",
-    "七对",
-    "七星不靠",
-    "全双刻",
-    "清一色",
-    "一色三同顺",
-    "一色三节高",
-    "全大",
-    "全中",
-    "全小",
-    "清龙",
-    "三色双龙会",
-    "一色三步高",
-    "一色三连环",
-    "全带五",
-    "三同刻",
-    "三暗刻",
-    "全不靠",
-    "组合龙",
-    "大于五",
-    "小于五",
-    "三风刻",
-    "花龙",
-    "推不倒",
-    "三色三同顺",
-    "三色三节高",
-    "无番和",
-    "妙手回春",
-    "海底捞月",
-    "杠上开花",
-    "抢杠和",
-    "碰碰和",
-    "混一色",
-    "三色三步高",
-    "五门齐",
-    "全求人",
-    "双暗杠",
-    "双箭刻",
-    "全带幺",
-    "不求人",
-    "双明杠",
-    "和绝张",
-    "箭刻",
-    "圈风刻",
-    "门风刻",
-    "门前清",
-    "平和",
-    "四归一",
-    "双同刻",
-    "双暗刻",
-    "暗杠",
-    "断幺",
-    "一般高",
-    "喜相逢",
-    "连六",
-    "老少副",
-    "幺九刻",
-    "明杠",
-    "缺一门",
-    "无字",
-    "独听・边张",
-    "独听・嵌张",
-    "独听・单钓",
-    "自摸",
-    "花牌",
-    "明暗杠",
-    "※ 天和",
-    "※ 地和",
-    "※ 人和Ⅰ",
-    "※ 人和Ⅱ",
-];
-const TZIACKHA_SEAT_TO_PLAYER_ORDER = [
-    [0, 1, 2, 3],
-    [1, 2, 3, 0],
-    [2, 3, 0, 1],
-    [3, 0, 1, 2],
-    [1, 0, 3, 2],
-    [0, 3, 2, 1],
-    [3, 2, 1, 0],
-    [2, 1, 0, 3],
-    [2, 3, 1, 0],
-    [3, 1, 0, 2],
-    [1, 0, 2, 3],
-    [0, 2, 3, 1],
-    [3, 2, 0, 1],
-    [2, 0, 1, 3],
-    [0, 1, 3, 2],
-    [1, 3, 2, 0],
-];
-function toNumber(value) {
-    if (typeof value === "number" && Number.isFinite(value)) {
-        return value;
-    }
-    if (typeof value === "string") {
-        const parsed = Number(value);
-        return Number.isFinite(parsed) ? parsed : null;
-    }
-    return null;
-}
+/* unused harmony import specifier */ var fetcherWin;
+
+const FAN_NAMES = (win_default()).FAN_NAMES;
+const TZIACKHA_SEAT_TO_PLAYER_ORDER = (win_default()).SEAT_PLAYER_ORDERS;
 function parseTziakchaWinFanItems(rawT) {
-    if (!rawT || typeof rawT !== "object") {
-        return [];
-    }
-    return Object.entries(rawT)
-        .map(([fanIndexRaw, encodedRaw]) => {
-        const fanIndex = toNumber(fanIndexRaw);
-        const encoded = toNumber(encodedRaw);
-        if (fanIndex === null || encoded === null) {
-            return null;
-        }
-        const fanIndexInt = Math.floor(fanIndex);
-        const encodedInt = Math.floor(encoded);
-        const unitFan = encodedInt & 0xff;
-        const count = (encodedInt >> 8) + 1;
-        const fanName = FAN_NAMES[fanIndexInt] || `番种${fanIndexInt}`;
-        return {
-            fanIndex: fanIndexInt,
-            fanName,
-            count,
-            unitFan,
-            totalFan: unitFan * count,
-        };
-    })
-        .filter((item) => Boolean(item))
-        .sort((left, right) => left.fanIndex - right.fanIndex);
-}
-function getSeatToPlayerOrder(roundNo) {
-    return (TZIACKHA_SEAT_TO_PLAYER_ORDER[((roundNo % TZIACKHA_SEAT_TO_PLAYER_ORDER.length) +
-        TZIACKHA_SEAT_TO_PLAYER_ORDER.length) %
-        TZIACKHA_SEAT_TO_PLAYER_ORDER.length] || [0, 1, 2, 3]);
-}
-function getPlayerName(session, playerIndex) {
-    return session.players[playerIndex]?.name || `Seat ${playerIndex}`;
+    return fetcherWin.parseTziakchaWinFanItems(rawT);
 }
 function extractTziakchaRoundWinInfos(session) {
-    const rounds = [];
-    session.records.forEach((record) => {
-        const stepData = record.step;
-        const resultBits = typeof stepData.b === "number" ? stepData.b : 0;
-        const winnerMask = resultBits & 0x0f;
-        const discarderMask = (resultBits >> 4) & 0x0f;
-        if (!winnerMask) {
-            return;
-        }
-        const seatToPlayerOrder = getSeatToPlayerOrder(record.index);
-        const winners = [];
-        for (let stepSeat = 0; stepSeat < 4; stepSeat += 1) {
-            if (((winnerMask >> stepSeat) & 1) === 0) {
-                continue;
-            }
-            const playerIndex = seatToPlayerOrder[stepSeat] ?? -1;
-            if (playerIndex < 0) {
-                continue;
-            }
-            const seatY = Array.isArray(stepData.y) ? stepData.y[stepSeat] : null;
-            const fanItems = parseTziakchaWinFanItems(seatY?.t);
-            const totalFan = typeof seatY?.f === "number"
-                ? seatY.f
-                : fanItems.reduce((sum, item) => sum + item.totalFan, 0);
-            winners.push({
-                playerName: getPlayerName(session, playerIndex),
-                playerIndex,
-                totalFan,
-                fanItems,
-            });
-        }
-        const discarders = [];
-        for (let stepSeat = 0; stepSeat < 4; stepSeat += 1) {
-            if (((discarderMask >> stepSeat) & 1) === 0) {
-                continue;
-            }
-            const playerIndex = seatToPlayerOrder[stepSeat] ?? -1;
-            if (playerIndex < 0) {
-                continue;
-            }
-            discarders.push({
-                playerName: getPlayerName(session, playerIndex),
-                playerIndex,
-            });
-        }
-        rounds.push({
-            roundNo: record.index + 1,
-            recordId: record.id,
-            winners,
-            discarders,
-            selfDraw: discarders.length === 0 ||
-                discarders.every((discarder) => winners.some((winner) => winner.playerIndex === discarder.playerIndex)),
-        });
-    });
-    return rounds;
+    return win_default().extractTziakchaRoundWinInfos(session);
 }
 
 ;// ./src/shared/tziakcha-records/index.ts
@@ -2272,7 +3528,7 @@ function extractTziakchaRoundWinInfos(session) {
 ;// ./src/shared/session-data.ts
 
 async function fetchSessionData(sessionId) {
-    const session = await session_fetchTziakchaSession(sessionId);
+    const session = await fetchTziakchaSession(sessionId);
     return {
         players: session.players,
         records: session.records.map((record) => ({ id: record.id })),
@@ -2563,7 +3819,7 @@ function buildResponseMap(responseRows, roundIndex) {
     });
     return responseMap;
 }
-function data_metrics_getSeatToPlayerOrder(roundNo) {
+function getSeatToPlayerOrder(roundNo) {
     if (!S2O.length) {
         return [0, 1, 2, 3];
     }
@@ -2632,7 +3888,7 @@ async function computeMetrics(sessionId) {
     const rounds = computeRoundOutcomes(sessionPlayerNames, steps, playerMetrics);
     const aiResponses = await Promise.all([0, 1, 2, 3].map((seat) => fetchAiResponse(sessionId, seat)));
     steps.forEach((stepData, roundNo) => {
-        const seatToPlayerOrder = data_metrics_getSeatToPlayerOrder(roundNo);
+        const seatToPlayerOrder = getSeatToPlayerOrder(roundNo);
         const aiToRoundSeat = [0, 1, 2, 3].map((playerOrder) => seatToPlayerOrder.findIndex((seatPlayerOrder) => seatPlayerOrder === playerOrder));
         const allChoices = extractChoices(stepData);
         for (let aiSeat = 0; aiSeat < 4; aiSeat += 1) {
@@ -2728,9 +3984,6 @@ function clearInsertedRows() {
     document.getElementById("reviewer-game-ratio-row")?.remove();
     document.getElementById("reviewer-game-chaga-row")?.remove();
     document.getElementById("reviewer-game-pending-row")?.remove();
-    document
-        .querySelectorAll(".reviewer-game-round-toggle, .reviewer-game-round-separator, .reviewer-game-detail-row")
-        .forEach((element) => element.remove());
 }
 function withAnchorRow(callback, retryInterval = UI_RETRY_INTERVAL_MS) {
     const anchor = findStandardScoreRow();
@@ -2978,10 +4231,13 @@ function initGameFeature(href) {
     void preparedPromise
         .then((prepared) => {
         const rounds = computeRoundOutcomes(prepared.sessionPlayerNames, prepared.steps);
+        infoLog("Game session prepared", {
+            sessionId,
+            isFinished: prepared.isFinished,
+            recordCount: prepared.steps.length,
+            roundsWithOutcomeCount: rounds.length,
+        });
         installRoundToggleButtons(rounds);
-        if (!prepared.isFinished) {
-            upsertMetricsMessageRows("请等待牌局完成");
-        }
     })
         .catch((error) => {
         warnLog("Game rounds preview failed", error);
@@ -4859,7 +6115,7 @@ let playerBName = "";
 let hideRareFans = true;
 let onlyLargeDiffFans = false;
 let sortByAbsDiff = false;
-function analysis_toNumber(value) {
+function toNumber(value) {
     const n = Number(value);
     return Number.isFinite(n) ? n : 0;
 }
@@ -4872,7 +6128,7 @@ function safeDiv(numerator, denominator) {
 function parseArray(source, key, n) {
     const out = [];
     for (let i = 0; i < n; i += 1) {
-        out.push(analysis_toNumber(source[`${key}${i}`]));
+        out.push(toNumber(source[`${key}${i}`]));
     }
     return out;
 }
@@ -4888,14 +6144,14 @@ function countSum(arr) {
 }
 function calcWinStats(data) {
     const basic = data.basic || {};
-    const claim = analysis_toNumber(basic.claim);
-    const draw = analysis_toNumber(basic.draw);
-    const shoot = analysis_toNumber(basic.shoot);
-    const splash = analysis_toNumber(basic.splash);
-    const watch = analysis_toNumber(basic.watch);
-    const tie = analysis_toNumber(basic.tie);
-    const lose = analysis_toNumber(basic.lose);
-    const fault = analysis_toNumber(basic.fault);
+    const claim = toNumber(basic.claim);
+    const draw = toNumber(basic.draw);
+    const shoot = toNumber(basic.shoot);
+    const splash = toNumber(basic.splash);
+    const watch = toNumber(basic.watch);
+    const tie = toNumber(basic.tie);
+    const lose = toNumber(basic.lose);
+    const fault = toNumber(basic.fault);
     const win = claim + draw;
     const total = win + shoot + splash + watch + tie;
     return {
@@ -4912,10 +6168,10 @@ function calcWinStats(data) {
 function calcCycleStats(data) {
     const basic = data.basic || {};
     const cycle = data.cycle || {};
-    const claim = analysis_toNumber(basic.claim);
-    const draw = analysis_toNumber(basic.draw);
-    const shoot = analysis_toNumber(basic.shoot);
-    const splash = analysis_toNumber(basic.splash);
+    const claim = toNumber(basic.claim);
+    const draw = toNumber(basic.draw);
+    const shoot = toNumber(basic.shoot);
+    const splash = toNumber(basic.splash);
     const c = parseArray(cycle, "c", 35);
     const d = parseArray(cycle, "d", 35);
     const s = parseArray(cycle, "s", 35);
@@ -4925,10 +6181,10 @@ function calcCycleStats(data) {
     const l3 = [];
     const l4 = [];
     for (let i = 0; i < 35; i += 1) {
-        l1.push(analysis_toNumber(cycle[`l${i}_1`]));
-        l2.push(analysis_toNumber(cycle[`l${i}_2`]));
-        l3.push(analysis_toNumber(cycle[`l${i}_3`]));
-        l4.push(analysis_toNumber(cycle[`l${i}_4`]));
+        l1.push(toNumber(cycle[`l${i}_1`]));
+        l2.push(toNumber(cycle[`l${i}_2`]));
+        l3.push(toNumber(cycle[`l${i}_3`]));
+        l4.push(toNumber(cycle[`l${i}_4`]));
     }
     const win = claim + draw;
     const listenArr = parseArray(cycle, "a", 35);
@@ -4948,11 +6204,11 @@ function calcCycleStats(data) {
 function calcPointStats(data) {
     const basic = data.basic || {};
     const point = data.point || {};
-    const claim = analysis_toNumber(basic.claim);
-    const draw = analysis_toNumber(basic.draw);
-    const shoot = analysis_toNumber(basic.shoot);
-    const splash = analysis_toNumber(basic.splash);
-    const watch = analysis_toNumber(basic.watch);
+    const claim = toNumber(basic.claim);
+    const draw = toNumber(basic.draw);
+    const shoot = toNumber(basic.shoot);
+    const splash = toNumber(basic.splash);
+    const watch = toNumber(basic.watch);
     const c = parseArray(point, "c", 333);
     const d = parseArray(point, "d", 333);
     const s = parseArray(point, "s", 333);
@@ -4969,121 +6225,121 @@ function calcPointStats(data) {
     };
 }
 const WIN_METRICS = [
-    { key: "winRate", label: "和牌率", calc: (basic) => analysis_toNumber(basic.winRate) },
+    { key: "winRate", label: "和牌率", calc: (basic) => toNumber(basic.winRate) },
     {
         key: "drawRate",
         label: "自摸率",
-        calc: (basic) => analysis_toNumber(basic.drawRate),
+        calc: (basic) => toNumber(basic.drawRate),
     },
     {
         key: "shootRate",
         label: "点炮率",
-        calc: (basic) => analysis_toNumber(basic.shootRate),
+        calc: (basic) => toNumber(basic.shootRate),
     },
     {
         key: "splashRate",
         label: "被摸率",
-        calc: (basic) => analysis_toNumber(basic.splashRate),
+        calc: (basic) => toNumber(basic.splashRate),
     },
     {
         key: "watchRate",
         label: "听牌率",
-        calc: (basic) => analysis_toNumber(basic.watchRate),
+        calc: (basic) => toNumber(basic.watchRate),
     },
     {
         key: "loseInShootRate",
         label: "点炮听牌率",
-        calc: (basic) => analysis_toNumber(basic.loseInShootRate),
+        calc: (basic) => toNumber(basic.loseInShootRate),
     },
     {
         key: "faultRate",
         label: "错和率",
-        calc: (basic) => analysis_toNumber(basic.faultRate),
+        calc: (basic) => toNumber(basic.faultRate),
     },
-    { key: "tieRate", label: "荒庄率", calc: (basic) => analysis_toNumber(basic.tieRate) },
+    { key: "tieRate", label: "荒庄率", calc: (basic) => toNumber(basic.tieRate) },
 ];
 const CYCLE_METRICS = [
     {
         key: "avgWinCycle",
         label: "和牌巡数",
-        calc: (basic) => analysis_toNumber(basic.avgWinCycle),
+        calc: (basic) => toNumber(basic.avgWinCycle),
     },
     {
         key: "avgListenCycle",
         label: "听牌巡数",
-        calc: (basic) => analysis_toNumber(basic.avgListenCycle),
+        calc: (basic) => toNumber(basic.avgListenCycle),
     },
     {
         key: "avgClaimCycle",
         label: "点和巡数",
-        calc: (basic) => analysis_toNumber(basic.avgClaimCycle),
+        calc: (basic) => toNumber(basic.avgClaimCycle),
     },
     {
         key: "avgDrawCycle",
         label: "自摸巡数",
-        calc: (basic) => analysis_toNumber(basic.avgDrawCycle),
+        calc: (basic) => toNumber(basic.avgDrawCycle),
     },
     {
         key: "avgShootCycle",
         label: "点炮巡数",
-        calc: (basic) => analysis_toNumber(basic.avgShootCycle),
+        calc: (basic) => toNumber(basic.avgShootCycle),
     },
     {
         key: "avgSplashCycle",
         label: "被摸巡数",
-        calc: (basic) => analysis_toNumber(basic.avgSplashCycle),
+        calc: (basic) => toNumber(basic.avgSplashCycle),
     },
     {
         key: "avgOpen1Cycle",
         label: "鸣第一组巡数",
-        calc: (basic) => analysis_toNumber(basic.avgOpen1Cycle),
+        calc: (basic) => toNumber(basic.avgOpen1Cycle),
     },
     {
         key: "avgOpen2Cycle",
         label: "鸣第二组巡数",
-        calc: (basic) => analysis_toNumber(basic.avgOpen2Cycle),
+        calc: (basic) => toNumber(basic.avgOpen2Cycle),
     },
     {
         key: "avgOpen3Cycle",
         label: "鸣第三组巡数",
-        calc: (basic) => analysis_toNumber(basic.avgOpen3Cycle),
+        calc: (basic) => toNumber(basic.avgOpen3Cycle),
     },
     {
         key: "avgOpen4Cycle",
         label: "鸣第四组巡数",
-        calc: (basic) => analysis_toNumber(basic.avgOpen4Cycle),
+        calc: (basic) => toNumber(basic.avgOpen4Cycle),
     },
 ];
 const POINT_METRICS = [
     {
         key: "avgWinFan",
         label: "平均和牌番",
-        calc: (basic) => analysis_toNumber(basic.avgWinFan),
+        calc: (basic) => toNumber(basic.avgWinFan),
     },
     {
         key: "avgClaimFan",
         label: "平均点和番",
-        calc: (basic) => analysis_toNumber(basic.avgClaimFan),
+        calc: (basic) => toNumber(basic.avgClaimFan),
     },
     {
         key: "avgDrawFan",
         label: "平均自摸番",
-        calc: (basic) => analysis_toNumber(basic.avgDrawFan),
+        calc: (basic) => toNumber(basic.avgDrawFan),
     },
     {
         key: "avgShootFan",
         label: "平均点炮番",
-        calc: (basic) => analysis_toNumber(basic.avgShootFan),
+        calc: (basic) => toNumber(basic.avgShootFan),
     },
     {
         key: "avgSplashFan",
         label: "平均被摸番",
-        calc: (basic) => analysis_toNumber(basic.avgSplashFan),
+        calc: (basic) => toNumber(basic.avgSplashFan),
     },
     {
         key: "avgWatchFan",
         label: "平均见证番",
-        calc: (basic) => analysis_toNumber(basic.avgWatchFan),
+        calc: (basic) => toNumber(basic.avgWatchFan),
     },
 ];
 function analysis_escapeHtml(text) {
