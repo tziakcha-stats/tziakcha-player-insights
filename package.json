@@ -20,6 +20,9 @@
     "url": "https://github.com/tziakcha-stats/tziakcha-player-insights"
   },
   "private": true,
+  "dependencies": {
+    "tziakcha-fetcher": "^2.0.1"
+  },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,json}": [
       "prettier --ignore-path ./.prettierignore --write "
