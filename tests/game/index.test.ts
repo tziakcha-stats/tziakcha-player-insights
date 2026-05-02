@@ -4,6 +4,7 @@ const prepareSessionData = vi.fn();
 const computeRoundOutcomes = vi.fn();
 const computeMetrics = vi.fn();
 const installRoundToggleButtons = vi.fn();
+const installRoundWinDisplayModes = vi.fn();
 const upsertLoadingRows = vi.fn();
 const upsertMetricsRows = vi.fn();
 const upsertMetricsMessageRows = vi.fn();
@@ -17,6 +18,7 @@ vi.mock("../../src/features/game/data-metrics", () => ({
 
 vi.mock("../../src/features/game/ui-render", () => ({
   installRoundToggleButtons,
+  installRoundWinDisplayModes,
   upsertLoadingRows,
   upsertMetricsRows,
   upsertMetricsMessageRows,
@@ -34,6 +36,7 @@ describe("game feature entry", () => {
     computeRoundOutcomes.mockReset();
     computeMetrics.mockReset();
     installRoundToggleButtons.mockReset();
+    installRoundWinDisplayModes.mockReset();
     upsertLoadingRows.mockReset();
     upsertMetricsRows.mockReset();
     upsertMetricsMessageRows.mockReset();
@@ -67,7 +70,7 @@ describe("game feature entry", () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(installRoundToggleButtons).toHaveBeenCalledWith([
+    expect(installRoundWinDisplayModes).toHaveBeenCalledWith([
       {
         roundNo: 1,
         winners: [],

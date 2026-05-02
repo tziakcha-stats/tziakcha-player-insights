@@ -43,4 +43,6 @@ settings.py.example
 
 node_modules/
 .worktrees/
+.superpowers/
+docs/superpowers/
 src/python/record/data/**/*.json
