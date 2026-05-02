@@ -19,11 +19,13 @@ module.exports = {
   source: repository.url,
   license: 'MIT',
   description: description,
+  "description:en": description,
   match: [
     "*://tziakcha.net/*",
     "*://tziakcha.net/record/*",
     "*://tziakcha.net/user/tech/*",
     "*://tziakcha.net/history/*",
+    "*://tc-api.pesiu.org/review/*"
   ],
   require: [
     // `https://cdn.jsdelivr.net/npm/jquery@${dependencies.jquery}/dist/jquery.min.js`,

@@ -1,0 +1,62 @@
+export const FAN_ITEMS: Array<{ idx: number; name: string }> = [
+  { idx: 36, name: "全不靠" },
+  { idx: 37, name: "组合龙" },
+  { idx: 45, name: "无番和" },
+  { idx: 51, name: "混一色" },
+  { idx: 53, name: "五门齐" },
+  { idx: 60, name: "和绝张" },
+  { idx: 58, name: "不求人" },
+  { idx: 57, name: "全带幺" },
+  { idx: 52, name: "三色三步高" },
+  { idx: 32, name: "一色三连环" },
+  { idx: 20, name: "七对" },
+  { idx: 43, name: "三色三同顺" },
+  { idx: 41, name: "花龙" },
+  { idx: 50, name: "碰碰和" },
+  { idx: 29, name: "清龙" },
+];
+
+export const REF_MAPS = {
+  chaga: {
+    label: "CHAGA均",
+    values: {
+      全不靠: 3.51,
+      组合龙: 2.783,
+      无番和: 2.158,
+      混一色: 9.56,
+      五门齐: 11.699,
+      和绝张: 4.97,
+      不求人: 7.288,
+      全带幺: 3.168,
+      三色三步高: 22.742,
+      一色三连环: 3.275,
+      七对: 3.036,
+      三色三同顺: 8.387,
+      花龙: 7.49,
+      碰碰和: 4.473,
+      清龙: 5.341,
+    } as Record<string, number>,
+  },
+  zha: {
+    label: "渣均",
+    values: {
+      全不靠: 1.674,
+      组合龙: 1.37,
+      无番和: 1.518,
+      混一色: 8.18,
+      五门齐: 10.88,
+      和绝张: 4.71,
+      不求人: 7.21,
+      全带幺: 3.137,
+      三色三步高: 23.144,
+      一色三连环: 3.428,
+      七对: 3.329,
+      三色三同顺: 9.788,
+      花龙: 9.169,
+      碰碰和: 5.695,
+      清龙: 7.748,
+    } as Record<string, number>,
+  },
+};
+
+export type RefKey = keyof typeof REF_MAPS;

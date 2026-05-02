@@ -1,7 +1,7 @@
 {
   "name": "tziakcha-player-insights",
   "description": "适用于雀渣平台的个人信息分析工具",
-  "version": "2.0.0",
+  "version": "2.2.1",
   "author": {
     "name": "Choimoe",
     "email": "qwqshq@gmail.com"
@@ -11,6 +11,7 @@
     "analize": "cross-env npm_config_report=true npm run build",
     "build": "webpack --config config/webpack.config.prod.cjs",
     "dev": "webpack --config config/webpack.config.dev.cjs",
+    "test": "vitest run",
     "prepare": "husky install",
     "lint-staged": "lint-staged"
   },
@@ -19,7 +20,9 @@
     "url": "https://github.com/tziakcha-stats/tziakcha-player-insights"
   },
   "private": true,
-  "dependencies": {},
+  "dependencies": {
+    "tziakcha-fetcher": "^2.0.1"
+  },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,json}": [
       "prettier --ignore-path ./.prettierignore --write "
@@ -33,6 +36,7 @@
     "cross-env": "^10.1.0",
     "css-loader": "^7.1.4",
     "husky": "^9.1.7",
+    "jsdom": "^29.0.1",
     "less": "^4.5.1",
     "less-loader": "^12.3.1",
     "lint-staged": "^16.3.0",
@@ -41,6 +45,7 @@
     "ts-loader": "^9.5.4",
     "typescript": "^5.9.3",
     "userscript-metadata-webpack-plugin": "^0.4.2",
+    "vitest": "^4.1.0",
     "webpack": "^5.105.3",
     "webpack-bundle-analyzer": "^5.2.0",
     "webpack-cli": "^6.0.1",

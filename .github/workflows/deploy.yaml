@@ -1,13 +1,32 @@
-# build latest v* tag and upload dist diectory to gh-pages branch.
-name: deploy
+# build latest v* tag and publish production release.
+name: release
 
 on:
   push:
-    branches:
+    tags:
       - v*
 
+permissions:
+  contents: write
+
 jobs:
-  deploy:
+  meta:
+    name: Collect release metadata
+    runs-on: ubuntu-latest
+    outputs:
+      is_prerelease: ${{ steps.release-meta.outputs.is_prerelease }}
+    steps:
+      - name: Detect prerelease tag
+        id: release-meta
+        run: |
+          if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    name: Build release package
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -21,12 +40,63 @@ jobs:
       - run: npm ci
       - run: npm run build
 
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Package dist
+        run: |
+          cd dist
+          zip -r ../tziakcha-player-insights-${{ github.ref_name }}.zip .
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-          enable_jekyll: true
-          commit_message: deploy ${{ github.ref }}
-          user_name: github-actions[bot]
-          user_email: github-actions[bot]@users.noreply.github.com
+          name: release-dist-${{ github.ref_name }}
+          path: |
+            ./dist
+            ./tziakcha-player-insights-${{ github.ref_name }}.zip
+          if-no-files-found: error
+
+  changelog:
+    name: Generate changelog
+    needs: meta
+    runs-on: ubuntu-latest
+    outputs:
+      release_body: ${{ steps.git-cliff.outputs.content }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Generate a changelog
+        uses: orhun/git-cliff-action@v4
+        id: git-cliff
+        with:
+          config: .github/cliff.toml
+          args: >-
+            -vv --latest --strip header
+            ${{ needs.meta.outputs.is_prerelease == 'false' && '--tag-pattern "^v[0-9]+\\.[0-9]+\\.[0-9]+$"' || '' }}
+        env:
+          OUTPUT: CHANGES.md
+          GITHUB_REPO: ${{ github.repository }}
+
+  release:
+    name: Publish release
+    needs:
+      - build
+      - changelog
+      - meta
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: release-dist-${{ github.ref_name }}
+          path: ./release-assets
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: ${{ needs.changelog.outputs.release_body }}
+          prerelease: ${{ needs.meta.outputs.is_prerelease == 'true' }}
+          files: ./release-assets/tziakcha-player-insights-${{ github.ref_name }}.zip
