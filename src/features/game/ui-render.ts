@@ -312,6 +312,31 @@ function parseDisplayedScores(row: HTMLTableRowElement): number[] {
   return scores;
 }
 
+function parseOriginalScoreRoleClasses(
+  row: HTMLTableRowElement,
+): Array<"w" | "c" | "n" | "f" | ""> {
+  const cells = Array.from(row.children) as HTMLTableCellElement[];
+  const roles: Array<"w" | "c" | "n" | "f" | ""> = [];
+  for (let idx = 1; idx < cells.length; idx += 2) {
+    const sourceClass =
+      cells[idx]?.dataset.reviewerOriginalScoreClass ??
+      cells[idx]?.className ??
+      "";
+    if (sourceClass.includes("f")) {
+      roles.push("f");
+    } else if (sourceClass.includes("w")) {
+      roles.push("w");
+    } else if (sourceClass.includes("c")) {
+      roles.push("c");
+    } else if (sourceClass.includes("n")) {
+      roles.push("n");
+    } else {
+      roles.push("");
+    }
+  }
+  return roles;
+}
+
 function getPlayerColumnIndexMap(table: HTMLTableElement): Map<string, number> {
   const map = new Map<string, number>();
   const nameCells = Array.from(
@@ -333,14 +358,11 @@ function getSeatIndexByName(
   return playerColumnIndexMap.get(name.trim()) ?? -1;
 }
 
-function detectFoulSeat(scores: number[], plusTenRule: boolean): number | null {
-  let foundSeat: number | null = null;
-  scores.forEach((score, seat) => {
-    if (plusTenRule ? score <= -30 : score <= -40) {
-      foundSeat = seat;
-    }
-  });
-  return foundSeat;
+function detectFoulSeat(
+  scoreRoles: Array<"w" | "c" | "n" | "f" | "">,
+): number | null {
+  const foundSeat = scoreRoles.findIndex((role) => role === "f");
+  return foundSeat >= 0 ? foundSeat : null;
 }
 
 function buildCompactScoreTexts(
@@ -348,9 +370,10 @@ function buildCompactScoreTexts(
   scores: number[],
   plusTenRule: boolean,
   playerColumnIndexMap: Map<string, number>,
+  scoreRoles: Array<"w" | "c" | "n" | "f" | "">,
 ): Array<{ text: string; foul: boolean }> {
   const result = [0, 1, 2, 3].map(() => ({ text: "", foul: false }));
-  const foulSeat = detectFoulSeat(scores, plusTenRule);
+  const foulSeat = detectFoulSeat(scoreRoles);
   if (foulSeat !== null) {
     result[foulSeat] = {
       text: plusTenRule ? "-10×3" : "-40",
@@ -426,6 +449,7 @@ function applyScoreCompactMode(
       return;
     }
     const scores = parseDisplayedScores(row);
+    const scoreRoles = parseOriginalScoreRoleClasses(row);
     if (scores.length !== 4) {
       return;
     }
@@ -442,6 +466,7 @@ function applyScoreCompactMode(
             scores,
             plusTenRule,
             playerColumnIndexMap,
+            scoreRoles,
           )
         : scores.map((score) => ({ text: String(score), foul: false }));
 

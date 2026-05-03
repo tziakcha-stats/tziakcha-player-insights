@@ -218,35 +218,35 @@ function setupScoreRoundTable(
         </tr>
         <tr name="rdtr" id="round-row-3">
           <td>3</td>
-          <td>10</td>
+          <td class="n">10</td>
           <td>86</td>
-          <td>10</td>
+          <td class="n">10</td>
           <td>78</td>
-          <td>-30</td>
+          <td class="f">-30</td>
           <td>46</td>
-          <td>10</td>
+          <td class="n">10</td>
           <td>190</td>
         </tr>
         <tr name="rdtr" id="round-row-4">
           <td>4</td>
-          <td>-38</td>
+          <td class="f">-38</td>
           <td>48</td>
-          <td>-10</td>
+          <td class="c">-10</td>
           <td>68</td>
-          <td>2</td>
+          <td class="n">2</td>
           <td>48</td>
-          <td>46</td>
+          <td class="w">46</td>
           <td>236</td>
         </tr>
         <tr name="rdtr" id="round-row-5">
           <td>5</td>
-          <td>-50</td>
+          <td class="f">-50</td>
           <td>-2</td>
-          <td>2</td>
+          <td class="n">2</td>
           <td>70</td>
-          <td>2</td>
+          <td class="n">2</td>
           <td>50</td>
-          <td>46</td>
+          <td class="w">46</td>
           <td>282</td>
         </tr>
         <tr id="summary-row">
@@ -1105,9 +1105,9 @@ describe("game ui render", () => {
     const round3 = document.getElementById("round-row-3");
     if (round2 && round3) {
       round2.innerHTML =
-        "<td>2</td><td>-30</td><td>70</td><td>-70</td><td>30</td><td>90</td><td>190</td><td>-30</td><td>70</td>";
+        '<td>2</td><td class="n">-30</td><td>70</td><td class="f">-70</td><td>30</td><td class="w">90</td><td>190</td><td class="n">-30</td><td>70</td>';
       round3.innerHTML =
-        "<td>3</td><td>-8</td><td>62</td><td>-70</td><td>-40</td><td>46</td><td>236</td><td>-8</td><td>62</td>";
+        '<td>3</td><td class="n">-8</td><td>62</td><td class="f">-70</td><td>-40</td><td class="w">46</td><td>236</td><td class="n">-8</td><td>62</td>';
     }
 
     installRoundWinDisplayModes([
@@ -1162,5 +1162,46 @@ describe("game ui render", () => {
     expect(row3[5]?.textContent).toBe("22");
     expect(row3[7]?.textContent).toBe("");
     expect(row3[3]?.className).toContain("f");
+  });
+
+  it("uses original score classes instead of score thresholds to detect winner discarder and foul", () => {
+    setupScoreRoundTable();
+
+    const round1 = document.getElementById("round-row-1");
+    if (round1) {
+      round1.innerHTML =
+        '<td>1</td><td class="n">-8</td><td>92</td><td class="n">-8</td><td>92</td><td class="w">64</td><td>164</td><td class="c">-48</td><td>52</td>';
+    }
+
+    installRoundWinDisplayModes([
+      {
+        roundNo: 1,
+        winners: [
+          {
+            playerName: "C",
+            totalFan: 16,
+            fanItems: [],
+          },
+        ],
+        discarderNames: ["D"],
+        selfDraw: false,
+      },
+    ]);
+
+    const toggle = document.querySelector(
+      "button[data-score-compact-mode]",
+    ) as HTMLButtonElement | null;
+    toggle?.click();
+
+    const row1 = document.querySelectorAll("#round-row-1 td");
+    expect(row1[1]?.textContent).toBe("");
+    expect(row1[1]?.className).toContain("n");
+    expect(row1[3]?.textContent).toBe("");
+    expect(row1[3]?.className).toContain("n");
+    expect(row1[5]?.textContent).toBe("16");
+    expect(row1[5]?.className).toContain("w");
+    expect(row1[7]?.textContent).toBe("-16");
+    expect(row1[7]?.className).toContain("c");
+    expect(row1[7]?.className).not.toContain("f");
   });
 });
