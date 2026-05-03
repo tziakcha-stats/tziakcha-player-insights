@@ -312,6 +312,16 @@ function parseDisplayedScores(row: HTMLTableRowElement): number[] {
   return scores;
 }
 
+function parseDisplayedTotals(row: HTMLTableRowElement): number[] {
+  const cells = Array.from(row.children) as HTMLTableCellElement[];
+  const totals: number[] = [];
+  for (let idx = 2; idx < cells.length; idx += 2) {
+    const value = Number((cells[idx]?.textContent || "").trim());
+    totals.push(Number.isFinite(value) ? value : 0);
+  }
+  return totals;
+}
+
 function parseOriginalScoreRoleClasses(
   row: HTMLTableRowElement,
 ): Array<"w" | "c" | "n" | "f" | ""> {
@@ -428,11 +438,97 @@ function buildCompactScoreTexts(
   return result;
 }
 
+function expandCompactScoresToActualScores(
+  compactScores: Array<{ text: string; foul: boolean }>,
+  baseScore: number,
+  plusTenRule: boolean,
+): number[] {
+  return compactScores.map((item) => {
+    const text = item.text.trim();
+    if (!text) {
+      return 0;
+    }
+    if (text.includes("×3")) {
+      if (text === "-10×3") {
+        return plusTenRule ? -30 : -40;
+      }
+      const value = Number(text.replace("×3", ""));
+      if (Number.isFinite(value)) {
+        return value * 3 + baseScore * 3;
+      }
+    }
+    if (text.startsWith("-10×3-")) {
+      const value = Number(text.replace("-10×3-", ""));
+      if (Number.isFinite(value)) {
+        return -30 - value;
+      }
+    }
+    if (text.startsWith("-40-")) {
+      const value = Number(text.replace("-40-", ""));
+      if (Number.isFinite(value)) {
+        return -40 - value;
+      }
+    }
+    const value = Number(text);
+    if (!Number.isFinite(value)) {
+      return 0;
+    }
+    if (value > 0) {
+      return value + baseScore * 3;
+    }
+    if (value < 0) {
+      return value - baseScore;
+    }
+    return 0;
+  });
+}
+
+function validateCompactScoreRound(
+  roundNo: number,
+  row: HTMLTableRowElement,
+  compactScores: Array<{ text: string; foul: boolean }>,
+  baseScore: number,
+  plusTenRule: boolean,
+): void {
+  const actualScores = parseDisplayedScores(row);
+  const displayedTotals = parseDisplayedTotals(row);
+  const expectedScores = expandCompactScoresToActualScores(
+    compactScores,
+    baseScore,
+    plusTenRule,
+  );
+  const previousRow = row.previousElementSibling as HTMLTableRowElement | null;
+  const previousTotals =
+    previousRow?.getAttribute("name") === "rdtr"
+      ? parseDisplayedTotals(previousRow)
+      : [0, 0, 0, 0];
+
+  const scoreMismatch = expectedScores.some(
+    (value, index) => value !== actualScores[index],
+  );
+  const totalMismatch = expectedScores.some(
+    (value, index) => previousTotals[index] + value !== displayedTotals[index],
+  );
+
+  if (scoreMismatch || totalMismatch) {
+    warnLog("简洁得分校验失败", {
+      roundNo,
+      expectedScores,
+      actualScores,
+      previousTotals,
+      displayedTotals,
+      compactScores: compactScores.map((item) => item.text),
+      mismatch: scoreMismatch ? "得分/累计" : "累计",
+    });
+  }
+}
+
 function applyScoreCompactMode(
   table: HTMLTableElement,
   rounds: RoundOutcome[],
   mode: ScoreCompactMode,
 ): void {
+  const baseScore = parseBaseScore();
   const plusTenRule = isPlusTenFoulRule();
   const roundMap = new Map<number, RoundOutcome>();
   const playerColumnIndexMap = getPlayerColumnIndexMap(table);
@@ -469,6 +565,16 @@ function applyScoreCompactMode(
             scoreRoles,
           )
         : scores.map((score) => ({ text: String(score), foul: false }));
+
+    if (mode === "compact") {
+      validateCompactScoreRound(
+        roundNo,
+        row,
+        displayed,
+        baseScore,
+        plusTenRule,
+      );
+    }
 
     displayed.forEach((item, seat) => {
       const cell = row.children[seat * 2 + 1] as

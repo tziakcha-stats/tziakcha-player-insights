@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   installRoundToggleButtons,
   installRoundWinDisplayModes,
@@ -29,6 +31,7 @@ function createMemoryStorage(): MemoryStorage {
 }
 
 const memoryStorage = createMemoryStorage();
+const tmpHtml = readFileSync(resolve(process.cwd(), "tmp.html"), "utf8");
 
 Object.defineProperty(window, "localStorage", {
   configurable: true,
@@ -273,6 +276,37 @@ function setupScoreRoundTable(
       </tbody>
     </table>
   `;
+
+  return document.getElementById("round-table") as HTMLTableElement;
+}
+
+function setupTmpHtmlCompactScoreTable(): HTMLTableElement {
+  const rows = Array.from(tmpHtml.matchAll(/<tr[\s\S]*?<\/tr>/g)).map(
+    (match) => match[0],
+  );
+  const targetRow = rows.find((row) => row.includes("record/?id=pVpFRAVE"));
+  if (!targetRow) {
+    throw new Error("tmp.html missing target row pVpFRAVE");
+  }
+
+  document.body.innerHTML = `
+    <h6 id="cfg">配置：16盘 | 8番 (8) | 错和 鸣牌 ✕ -40/+0 | 随机座位</h6>
+    <table class="table" id="round-table">
+      <tbody>
+        ${rows.slice(0, 4).join("")}
+        ${targetRow}
+      </tbody>
+    </table>
+  `;
+
+  const roundRow = document.querySelector('tr[name="rdtr"]');
+  if (roundRow) {
+    roundRow.id = "tmp-round-row";
+    const firstCell = roundRow.children[0] as HTMLTableCellElement | undefined;
+    if (firstCell) {
+      firstCell.textContent = "1";
+    }
+  }
 
   return document.getElementById("round-table") as HTMLTableElement;
 }
@@ -1203,5 +1237,75 @@ describe("game ui render", () => {
     expect(row1[7]?.textContent).toBe("-16");
     expect(row1[7]?.className).toContain("c");
     expect(row1[7]?.className).not.toContain("f");
+  });
+
+  it("logs a warning when compact score conversion cannot reproduce actual scores and cumulative totals", () => {
+    setupScoreRoundTable();
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const round1 = document.getElementById("round-row-1");
+    if (round1) {
+      round1.innerHTML =
+        '<td>1</td><td class="n">-8</td><td>92</td><td class="n">-8</td><td>91</td><td class="w">64</td><td>164</td><td class="c">-48</td><td>52</td>';
+    }
+
+    installRoundWinDisplayModes([
+      {
+        roundNo: 1,
+        winners: [
+          {
+            playerName: "C",
+            totalFan: 16,
+            fanItems: [],
+          },
+        ],
+        discarderNames: ["D"],
+        selfDraw: false,
+      },
+    ]);
+
+    const toggle = document.querySelector(
+      "button[data-score-compact-mode]",
+    ) as HTMLButtonElement | null;
+    toggle?.click();
+
+    expect(warnSpy).toHaveBeenCalled();
+    expect(warnSpy.mock.calls[0]?.[1]).toBe("简洁得分校验失败");
+    expect(warnSpy.mock.calls[0]?.[2]).toMatchObject({
+      mismatch: "得分/累计",
+    });
+  });
+
+  it("uses tmp.html row data to render the problematic ron row correctly in compact mode", () => {
+    setupTmpHtmlCompactScoreTable();
+
+    installRoundWinDisplayModes([
+      {
+        roundNo: 1,
+        winners: [
+          {
+            playerName: "★ 海伯利安",
+            totalFan: 40,
+            fanItems: [],
+          },
+        ],
+        discarderNames: ["截和天地人和"],
+        selfDraw: false,
+      },
+    ]);
+
+    const toggle = document.querySelector(
+      "button[data-score-compact-mode]",
+    ) as HTMLButtonElement | null;
+    toggle?.click();
+
+    const row = document.querySelectorAll("#tmp-round-row td");
+    expect(row[1]?.textContent).toBe("");
+    expect(row[3]?.textContent).toBe("");
+    expect(row[5]?.textContent).toBe("40");
+    expect(row[7]?.textContent).toBe("-40");
+    expect(row[5]?.className).toContain("w");
+    expect(row[7]?.className).toContain("c");
+    expect(row[7]?.className).not.toContain("f");
   });
 });
