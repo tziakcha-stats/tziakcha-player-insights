@@ -18,6 +18,30 @@ const ROUND_WIN_REMARK_MAX_WIDTH = "5em";
 const ROUND_WIN_POPOVER_AUTO_CLOSE_MS = 5000;
 const ROUND_WIN_REMARK_COLUMN_WIDTH = "7.5em";
 const FLOWER_FAN_NAME = "花牌";
+const YAOJIUKE_FAN_NAME = "幺九刻";
+const COPPER_TWO_FAN_ABBREVIATIONS: Record<string, string> = {
+  四归一: "归",
+  暗杠: "杠",
+  门前清: "门",
+  平和: "平",
+  断幺: "断",
+  双暗刻: "暗",
+  双同刻: "同",
+  箭刻: "箭",
+  门风刻: "风",
+  圈风刻: "风",
+};
+
+type RoundRemarkPattern =
+  | {
+      type: "silver";
+      label: string;
+    }
+  | {
+      type: "gold";
+      label: string;
+    }
+  | null;
 
 let activeRoundWinPopoverTimer: number | null = null;
 
@@ -312,9 +336,83 @@ function ensureModeSwitcher(
   table.insertAdjacentElement("beforebegin", switcher);
 }
 
+function getRoundRemarkPattern(round: RoundOutcome): RoundRemarkPattern {
+  const fanEntries: Array<{ fanName: string; unitFan: number }> = [];
+
+  round.winners.forEach((winner) => {
+    winner.fanItems.forEach((fan) => {
+      if (fan.fanName === FLOWER_FAN_NAME) {
+        return;
+      }
+      const unitFan = Number.isFinite(fan.unitFan) ? fan.unitFan : 0;
+      const count = Number.isFinite(fan.count) ? fan.count : 0;
+      for (let idx = 0; idx < count; idx += 1) {
+        fanEntries.push({
+          fanName: fan.fanName,
+          unitFan,
+        });
+      }
+    });
+  });
+
+  if (!fanEntries.length) {
+    return null;
+  }
+
+  const twoFanEntries = fanEntries.filter((fan) => fan.unitFan === 2);
+  const oneFanEntries = fanEntries.filter((fan) => fan.unitFan === 1);
+  const onlyOneAndTwoFan = fanEntries.every(
+    (fan) => fan.unitFan === 1 || fan.unitFan === 2,
+  );
+
+  if (
+    onlyOneAndTwoFan &&
+    twoFanEntries.length === 2 &&
+    oneFanEntries.length + twoFanEntries.length === fanEntries.length
+  ) {
+    const abbreviations = twoFanEntries
+      .map((fan) => COPPER_TWO_FAN_ABBREVIATIONS[fan.fanName])
+      .filter((value): value is string => Boolean(value));
+    if (abbreviations.length === 2) {
+      return {
+        type: "silver",
+        label: `铜・${abbreviations.join("")}`,
+      };
+    }
+  }
+
+  if (
+    onlyOneAndTwoFan &&
+    twoFanEntries.length === 1 &&
+    oneFanEntries.length + twoFanEntries.length === fanEntries.length
+  ) {
+    return {
+      type: "silver",
+      label: `银・${twoFanEntries[0]?.fanName || "番种未知"}`,
+    };
+  }
+
+  if (fanEntries.every((fan) => fan.unitFan === 1)) {
+    const yaojiukeCount = fanEntries.filter(
+      (fan) => fan.fanName === YAOJIUKE_FAN_NAME,
+    ).length;
+    return {
+      type: "gold",
+      label: yaojiukeCount >= 2 ? "金Ⅱ" : "金Ⅰ",
+    };
+  }
+
+  return null;
+}
+
 function getMaxFanRemark(round: RoundOutcome): string {
   if (!round.winners.length) {
     return "";
+  }
+
+  const patternRemark = getRoundRemarkPattern(round);
+  if (patternRemark) {
+    return patternRemark.label;
   }
 
   let bestFanName = "番种未知";

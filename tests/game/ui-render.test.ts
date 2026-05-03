@@ -419,7 +419,7 @@ describe("game ui render", () => {
       "#round-row-3 .reviewer-game-win-remark-cell",
     );
 
-    expect(round1Remark?.textContent).toContain("平和");
+    expect(round1Remark?.textContent).toBe("金Ⅰ");
     expect(round2Remark?.textContent).toBe("");
     expect(round3Remark?.textContent).toBe("");
   });
@@ -532,9 +532,8 @@ describe("game ui render", () => {
     expect(round1Remark?.textContent).not.toContain("花牌");
   });
 
-  it("falls back to the first non-flower fan and logs when flower would be chosen", () => {
+  it("renders 金Ⅰ for all one-fan structures even when flower is present", () => {
     setupRoundTable();
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     installRoundWinDisplayModes([
       {
@@ -577,10 +576,231 @@ describe("game ui render", () => {
       "#round-row-1 .reviewer-game-win-remark-cell",
     ) as HTMLTableCellElement | null;
 
-    expect(round1Remark?.textContent).toContain("幺九刻");
+    expect(round1Remark?.textContent).toBe("金Ⅰ");
     expect(round1Remark?.textContent).not.toContain("花牌");
-    expect(warnSpy).toHaveBeenCalled();
-    expect(warnSpy.mock.calls[0]?.[1]).toContain("花牌");
+  });
+
+  it("renders 银・番名 when exactly one two-fan item remains and the rest are one-fan items", () => {
+    setupRoundTable();
+
+    installRoundWinDisplayModes([
+      {
+        roundNo: 1,
+        winners: [
+          {
+            playerName: "A",
+            totalFan: 8,
+            fanItems: [
+              {
+                fanIndex: 62,
+                fanName: "暗杠",
+                count: 1,
+                unitFan: 2,
+                totalFan: 2,
+              },
+              {
+                fanIndex: 76,
+                fanName: "缺一门",
+                count: 1,
+                unitFan: 1,
+                totalFan: 1,
+              },
+              {
+                fanIndex: 68,
+                fanName: "无字",
+                count: 1,
+                unitFan: 1,
+                totalFan: 1,
+              },
+              {
+                fanIndex: 1,
+                fanName: "花牌",
+                count: 3,
+                unitFan: 1,
+                totalFan: 3,
+              },
+            ],
+          },
+        ],
+        discarderNames: ["B"],
+        selfDraw: false,
+      },
+    ]);
+
+    const round1Remark = document.querySelector(
+      "#round-row-1 .reviewer-game-win-remark-cell",
+    ) as HTMLTableCellElement | null;
+
+    expect(round1Remark?.textContent).toBe("银・暗杠");
+  });
+
+  it("renders 铜・AB when exactly two two-fan items remain and the rest are one-fan items", () => {
+    setupRoundTable();
+
+    installRoundWinDisplayModes([
+      {
+        roundNo: 1,
+        winners: [
+          {
+            playerName: "A",
+            totalFan: 8,
+            fanItems: [
+              {
+                fanIndex: 79,
+                fanName: "平和",
+                count: 1,
+                unitFan: 2,
+                totalFan: 2,
+              },
+              {
+                fanIndex: 62,
+                fanName: "暗杠",
+                count: 1,
+                unitFan: 2,
+                totalFan: 2,
+              },
+              {
+                fanIndex: 76,
+                fanName: "缺一门",
+                count: 1,
+                unitFan: 1,
+                totalFan: 1,
+              },
+              {
+                fanIndex: 68,
+                fanName: "无字",
+                count: 1,
+                unitFan: 1,
+                totalFan: 1,
+              },
+              {
+                fanIndex: 1,
+                fanName: "花牌",
+                count: 2,
+                unitFan: 1,
+                totalFan: 2,
+              },
+            ],
+          },
+        ],
+        discarderNames: ["B"],
+        selfDraw: false,
+      },
+    ]);
+
+    const round1Remark = document.querySelector(
+      "#round-row-1 .reviewer-game-win-remark-cell",
+    ) as HTMLTableCellElement | null;
+
+    expect(round1Remark?.textContent).toBe("铜・平杠");
+  });
+
+  it("renders 金Ⅰ when all non-flower items are one-fan items", () => {
+    setupRoundTable();
+
+    installRoundWinDisplayModes([
+      {
+        roundNo: 1,
+        winners: [
+          {
+            playerName: "A",
+            totalFan: 4,
+            fanItems: [
+              {
+                fanIndex: 76,
+                fanName: "缺一门",
+                count: 1,
+                unitFan: 1,
+                totalFan: 1,
+              },
+              {
+                fanIndex: 68,
+                fanName: "无字",
+                count: 1,
+                unitFan: 1,
+                totalFan: 1,
+              },
+              {
+                fanIndex: 82,
+                fanName: "自摸",
+                count: 1,
+                unitFan: 1,
+                totalFan: 1,
+              },
+              {
+                fanIndex: 1,
+                fanName: "花牌",
+                count: 1,
+                unitFan: 1,
+                totalFan: 1,
+              },
+            ],
+          },
+        ],
+        discarderNames: [],
+        selfDraw: true,
+      },
+    ]);
+
+    const round1Remark = document.querySelector(
+      "#round-row-1 .reviewer-game-win-remark-cell",
+    ) as HTMLTableCellElement | null;
+
+    expect(round1Remark?.textContent).toBe("金Ⅰ");
+  });
+
+  it("renders 金Ⅱ when all non-flower items are one-fan items and include two 幺九刻", () => {
+    setupRoundTable();
+
+    installRoundWinDisplayModes([
+      {
+        roundNo: 1,
+        winners: [
+          {
+            playerName: "A",
+            totalFan: 5,
+            fanItems: [
+              {
+                fanIndex: 61,
+                fanName: "幺九刻",
+                count: 2,
+                unitFan: 1,
+                totalFan: 2,
+              },
+              {
+                fanIndex: 76,
+                fanName: "缺一门",
+                count: 1,
+                unitFan: 1,
+                totalFan: 1,
+              },
+              {
+                fanIndex: 68,
+                fanName: "无字",
+                count: 1,
+                unitFan: 1,
+                totalFan: 1,
+              },
+              {
+                fanIndex: 1,
+                fanName: "花牌",
+                count: 1,
+                unitFan: 1,
+                totalFan: 1,
+              },
+            ],
+          },
+        ],
+        discarderNames: ["B"],
+        selfDraw: false,
+      },
+    ]);
+
+    const round1Remark = document.querySelector(
+      "#round-row-1 .reviewer-game-win-remark-cell",
+    ) as HTMLTableCellElement | null;
+
+    expect(round1Remark?.textContent).toBe("金Ⅱ");
   });
 
   it("opens one floating detail popover and closes it manually", () => {
