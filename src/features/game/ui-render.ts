@@ -1,5 +1,5 @@
 import { getLocalStorageItem, setLocalStorageItem } from "../../shared/storage";
-import { infoLog } from "../../shared/logger";
+import { infoLog, warnLog } from "../../shared/logger";
 import { MetricsResult, RoundOutcome } from "./types";
 import { UI_RETRY_INTERVAL_MS, UI_RETRY_MAX_COUNT } from "./constants";
 
@@ -17,6 +17,7 @@ const ROUND_WIN_POPOVER_CLOSE_CLASS = "reviewer-game-win-popover-close";
 const ROUND_WIN_REMARK_MAX_WIDTH = "5em";
 const ROUND_WIN_POPOVER_AUTO_CLOSE_MS = 5000;
 const ROUND_WIN_REMARK_COLUMN_WIDTH = "7.5em";
+const FLOWER_FAN_NAME = "花牌";
 
 let activeRoundWinPopoverTimer: number | null = null;
 
@@ -313,11 +314,17 @@ function ensureModeSwitcher(
 
 function getMaxFanRemark(round: RoundOutcome): string {
   if (!round.winners.length) {
-    return "荒庄";
+    return "";
   }
 
   let bestFanName = "番种未知";
   let bestFanValue = -1;
+  let fallbackFanName = "";
+  let skippedFlowerCandidate: {
+    fanName: string;
+    fanValue: number;
+    playerName: string;
+  } | null = null;
 
   round.winners.forEach((winner) => {
     if (!winner.fanItems.length && bestFanValue < 0) {
@@ -331,6 +338,22 @@ function getMaxFanRemark(round: RoundOutcome): string {
         typeof fan.totalFan === "number" && Number.isFinite(fan.totalFan)
           ? fan.totalFan
           : fan.unitFan * fan.count;
+      if (!fallbackFanName && fan.fanName !== FLOWER_FAN_NAME) {
+        fallbackFanName = fan.fanName;
+      }
+      if (fan.fanName === FLOWER_FAN_NAME) {
+        if (
+          !skippedFlowerCandidate ||
+          fanValue > skippedFlowerCandidate.fanValue
+        ) {
+          skippedFlowerCandidate = {
+            fanName: fan.fanName,
+            fanValue,
+            playerName: winner.playerName,
+          };
+        }
+        return;
+      }
       if (fanValue > bestFanValue) {
         bestFanName = fan.fanName;
         bestFanValue = fanValue;
@@ -338,6 +361,22 @@ function getMaxFanRemark(round: RoundOutcome): string {
     });
   });
 
+  if (bestFanValue < 0 && fallbackFanName) {
+    bestFanName = fallbackFanName;
+    bestFanValue = 0;
+  }
+  if (
+    skippedFlowerCandidate &&
+    skippedFlowerCandidate.fanValue > bestFanValue
+  ) {
+    warnLog("番种备注候选错误：已跳过花牌作为备注显示", {
+      roundNo: round.roundNo,
+      playerName: skippedFlowerCandidate.playerName,
+      fanName: skippedFlowerCandidate.fanName,
+      fanValue: skippedFlowerCandidate.fanValue,
+      fallbackFanName: bestFanName,
+    });
+  }
   return bestFanName;
 }
 
@@ -427,14 +466,15 @@ function createRemarkCell(round: RoundOutcome): HTMLTableCellElement {
   trigger.style.padding = "0";
   trigger.style.border = "0";
   trigger.style.background = "transparent";
-  trigger.style.cursor = remark === "荒庄" ? "default" : "pointer";
-  trigger.style.color =
-    remark === "荒庄" ? "rgba(102,115,129,0.92)" : "rgba(49,70,92,0.96)";
+  trigger.style.cursor = remark ? "pointer" : "default";
+  trigger.style.color = remark
+    ? "rgba(49,70,92,0.96)"
+    : "rgba(102,115,129,0.92)";
   trigger.style.textDecoration = "none";
   trigger.style.font = "inherit";
   trigger.style.lineHeight = "inherit";
   trigger.title = remark;
-  if (remark !== "荒庄") {
+  if (remark) {
     trigger.addEventListener("click", () =>
       openRoundWinPopover(trigger, round),
     );
@@ -518,9 +558,6 @@ function renderRemarkMode(
       `.${ROUND_WIN_REMARK_CELL_CLASS}`,
     ) as HTMLTableCellElement | null;
     if (!round) {
-      if (existingCell) {
-        existingCell.remove();
-      }
       return;
     }
     const cell = createRemarkCell(round);

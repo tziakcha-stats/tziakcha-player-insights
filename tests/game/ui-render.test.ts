@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   installRoundToggleButtons,
   installRoundWinDisplayModes,
@@ -178,6 +178,10 @@ function buildRounds(): RoundOutcome[] {
 }
 
 describe("game ui render", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("keeps round toggle buttons when showing the unfinished-session message", () => {
     document.body.innerHTML = `
       <table class="table">
@@ -363,7 +367,7 @@ describe("game ui render", () => {
     expect(document.querySelector(".reviewer-game-round-toggle")).toBeNull();
   });
 
-  it("renders 荒庄 and 默认番种备注 in remark mode", () => {
+  it("renders blank remark cells for draw rounds and unknown fan rounds", () => {
     setupRoundTable();
 
     installRoundWinDisplayModes(buildRounds());
@@ -375,19 +379,11 @@ describe("game ui render", () => {
       "#round-row-3 .reviewer-game-win-remark-cell",
     );
 
-    expect(round2Remark?.textContent).toContain("荒庄");
+    expect(round2Remark?.textContent).toBe("");
     expect(round3Remark?.textContent).toContain("番种未知");
-
-    const drawBadge = round2Remark?.querySelector(
-      ".reviewer-game-win-remark-trigger",
-    ) as HTMLButtonElement | null;
-    expect(drawBadge).not.toBeNull();
-    expect(drawBadge?.style.borderRadius).toBe("");
-    expect(drawBadge?.style.background).toBe("transparent");
-    expect(drawBadge?.style.padding).toBe("0px");
   });
 
-  it("keeps remark blank for rounds that have not been played yet", () => {
+  it("keeps remark cells blank for rounds that have not been played yet", () => {
     setupRoundTable();
 
     installRoundWinDisplayModes([
@@ -424,8 +420,8 @@ describe("game ui render", () => {
     );
 
     expect(round1Remark?.textContent).toContain("平和");
-    expect(round2Remark).toBeNull();
-    expect(round3Remark).toBeNull();
+    expect(round2Remark?.textContent).toBe("");
+    expect(round3Remark?.textContent).toBe("");
   });
 
   it("does not inject blank remark cells into empty rdtr rows", () => {
@@ -534,6 +530,57 @@ describe("game ui render", () => {
 
     expect(round1Remark?.textContent).toContain("花龙");
     expect(round1Remark?.textContent).not.toContain("花牌");
+  });
+
+  it("falls back to the first non-flower fan and logs when flower would be chosen", () => {
+    setupRoundTable();
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    installRoundWinDisplayModes([
+      {
+        roundNo: 1,
+        winners: [
+          {
+            playerName: "HZ",
+            totalFan: 11,
+            fanItems: [
+              {
+                fanIndex: 1,
+                fanName: "花牌",
+                count: 3,
+                unitFan: 1,
+                totalFan: 3,
+              },
+              {
+                fanIndex: 61,
+                fanName: "幺九刻",
+                count: 1,
+                unitFan: 1,
+                totalFan: 1,
+              },
+              {
+                fanIndex: 82,
+                fanName: "自摸",
+                count: 1,
+                unitFan: 1,
+                totalFan: 1,
+              },
+            ],
+          },
+        ],
+        discarderNames: [],
+        selfDraw: true,
+      },
+    ]);
+
+    const round1Remark = document.querySelector(
+      "#round-row-1 .reviewer-game-win-remark-cell",
+    ) as HTMLTableCellElement | null;
+
+    expect(round1Remark?.textContent).toContain("幺九刻");
+    expect(round1Remark?.textContent).not.toContain("花牌");
+    expect(warnSpy).toHaveBeenCalled();
+    expect(warnSpy.mock.calls[0]?.[1]).toContain("花牌");
   });
 
   it("opens one floating detail popover and closes it manually", () => {
