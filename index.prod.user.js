@@ -4,7 +4,7 @@
 // @name:en          Tziakcha Player Insights
 // @icon             https://cdn.jsdelivr.net/gh/Choimoe/chaga-reviewer-script/doc/img/icon.png
 // @namespace        https://greasyfork.org/users/1543716
-// @version          2.2.3
+// @version          2.2.4
 // @author           Choimoe <qwqshq@gmail.com>
 // @source           https://github.com/tziakcha-stats/tziakcha-player-insights
 // @license          MIT
