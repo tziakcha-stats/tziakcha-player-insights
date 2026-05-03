@@ -80,6 +80,53 @@ function setupRoundTable(): HTMLTableElement {
   return document.getElementById("round-table") as HTMLTableElement;
 }
 
+function setupSparseRoundTable(): HTMLTableElement {
+  document.body.innerHTML = `
+    <table class="table" id="round-table">
+      <tbody>
+        <tr>
+          <th class="bg-secondary text-light">选手姓名</th>
+          <td colspan="8" class="bg-secondary text-light">玩家信息</td>
+        </tr>
+        <tr>
+          <th>开局座位</th>
+          <td colspan="8">东南西北</td>
+        </tr>
+        <tr>
+          <th>每圈座位</th>
+          <td colspan="8">东南西北</td>
+        </tr>
+        <tr>
+          <th>盘序</th>
+          <th>结果</th>
+          <th>备注</th>
+        </tr>
+        <tr name="rdtr" id="round-row-1">
+          <td>1</td>
+          <td>第1局</td>
+          <td>Ron</td>
+        </tr>
+        <tr name="rdtr" id="round-row-2"></tr>
+        <tr name="rdtr" id="round-row-3"></tr>
+        <tr id="summary-row">
+          <th class="bg-secondary text-light">合计</th>
+          <td colspan="2" class="bg-secondary text-light">100</td>
+        </tr>
+        <tr id="rank-row">
+          <th class="bg-secondary text-light">名次</th>
+          <td colspan="2" class="bg-secondary text-light">1</td>
+        </tr>
+        <tr id="standard-row">
+          <th class="bg-secondary text-light">标准分</th>
+          <td colspan="2" class="bg-secondary text-light">45.0</td>
+        </tr>
+      </tbody>
+    </table>
+  `;
+
+  return document.getElementById("round-table") as HTMLTableElement;
+}
+
 function buildRounds(): RoundOutcome[] {
   return [
     {
@@ -338,6 +385,82 @@ describe("game ui render", () => {
     expect(drawBadge?.style.borderRadius).toBe("");
     expect(drawBadge?.style.background).toBe("transparent");
     expect(drawBadge?.style.padding).toBe("0px");
+  });
+
+  it("keeps remark blank for rounds that have not been played yet", () => {
+    setupRoundTable();
+
+    installRoundWinDisplayModes([
+      {
+        roundNo: 1,
+        winners: [
+          {
+            playerName: "A",
+            totalFan: 3,
+            fanItems: [
+              {
+                fanIndex: 8,
+                fanName: "平和",
+                count: 1,
+                unitFan: 1,
+                totalFan: 1,
+              },
+            ],
+          },
+        ],
+        discarderNames: ["B"],
+        selfDraw: false,
+      },
+    ]);
+
+    const round1Remark = document.querySelector(
+      "#round-row-1 .reviewer-game-win-remark-cell",
+    );
+    const round2Remark = document.querySelector(
+      "#round-row-2 .reviewer-game-win-remark-cell",
+    );
+    const round3Remark = document.querySelector(
+      "#round-row-3 .reviewer-game-win-remark-cell",
+    );
+
+    expect(round1Remark?.textContent).toContain("平和");
+    expect(round2Remark).toBeNull();
+    expect(round3Remark).toBeNull();
+  });
+
+  it("does not inject blank remark cells into empty rdtr rows", () => {
+    setupSparseRoundTable();
+
+    installRoundWinDisplayModes([
+      {
+        roundNo: 1,
+        winners: [
+          {
+            playerName: "A",
+            totalFan: 3,
+            fanItems: [
+              {
+                fanIndex: 8,
+                fanName: "平和",
+                count: 1,
+                unitFan: 1,
+                totalFan: 1,
+              },
+            ],
+          },
+        ],
+        discarderNames: ["B"],
+        selfDraw: false,
+      },
+    ]);
+
+    const round1Children = document.querySelectorAll("#round-row-1 > *");
+    const round2Children = document.querySelectorAll("#round-row-2 > *");
+    const round3Children = document.querySelectorAll("#round-row-3 > *");
+
+    expect(round1Children).toHaveLength(4);
+    expect(round2Children).toHaveLength(0);
+    expect(round3Children).toHaveLength(0);
   });
 
   it("shows only the max-fan remark for each round", () => {
