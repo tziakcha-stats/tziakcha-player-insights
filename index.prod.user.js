@@ -3940,7 +3940,9 @@ async function computeMetrics(sessionId) {
 
 
 const ROUND_WIN_DISPLAY_MODE_KEY = "reviewer:game-win-display-mode";
+const SCORE_COMPACT_MODE_KEY = "reviewer:game-score-compact-mode";
 const DEFAULT_ROUND_WIN_DISPLAY_MODE = "remark";
+const DEFAULT_SCORE_COMPACT_MODE = "original";
 const ROUND_WIN_MODE_SWITCHER_ID = "reviewer-game-win-mode-switcher";
 const ROUND_WIN_POPOVER_ID = "reviewer-game-win-popover";
 const ROUND_WIN_REMARK_HEADER_CLASS = "reviewer-game-win-remark-header";
@@ -3951,6 +3953,21 @@ const ROUND_WIN_POPOVER_CLOSE_CLASS = "reviewer-game-win-popover-close";
 const ROUND_WIN_REMARK_MAX_WIDTH = "5em";
 const ROUND_WIN_POPOVER_AUTO_CLOSE_MS = 5000;
 const ROUND_WIN_REMARK_COLUMN_WIDTH = "7.5em";
+const SCORE_COMPACT_TOGGLE_ATTR = "data-score-compact-mode";
+const FLOWER_FAN_NAME = "花牌";
+const YAOJIUKE_FAN_NAME = "幺九刻";
+const COPPER_TWO_FAN_ABBREVIATIONS = {
+    四归一: "归",
+    暗杠: "杠",
+    门前清: "门",
+    平和: "平",
+    断幺: "断",
+    双暗刻: "暗",
+    双同刻: "同",
+    箭刻: "箭",
+    门风刻: "风",
+    圈风刻: "风",
+};
 let activeRoundWinPopoverTimer = null;
 function findStandardScoreRow() {
     const selectors = ["table.table tr", "table tr"];
@@ -4092,8 +4109,18 @@ function readRoundWinDisplayMode() {
     }
     return DEFAULT_ROUND_WIN_DISPLAY_MODE;
 }
+function readScoreCompactMode() {
+    const stored = getLocalStorageItem(SCORE_COMPACT_MODE_KEY);
+    if (stored === "compact" || stored === "original") {
+        return stored;
+    }
+    return DEFAULT_SCORE_COMPACT_MODE;
+}
 function writeRoundWinDisplayMode(mode) {
     setLocalStorageItem(ROUND_WIN_DISPLAY_MODE_KEY, mode);
+}
+function writeScoreCompactMode(mode) {
+    setLocalStorageItem(SCORE_COMPACT_MODE_KEY, mode);
 }
 function closeActiveRoundWinPopover() {
     if (activeRoundWinPopoverTimer !== null) {
@@ -4120,6 +4147,148 @@ function clearRoundWinEnhancements() {
         .querySelectorAll(".reviewer-game-detail-row")
         .forEach((row) => row.remove());
 }
+function parseBaseScore() {
+    const cfgText = document.getElementById("cfg")?.textContent || "";
+    const match = cfgText.match(/\((\d+)\)/);
+    if (!match) {
+        return 8;
+    }
+    const value = Number(match[1]);
+    return Number.isFinite(value) ? value : 8;
+}
+function isPlusTenFoulRule() {
+    const cfgText = document.getElementById("cfg")?.textContent || "";
+    return cfgText.includes("-30/+10");
+}
+function parseDisplayedScores(row) {
+    const cells = Array.from(row.children);
+    const scores = [];
+    for (let idx = 1; idx < cells.length; idx += 2) {
+        const sourceText = cells[idx]?.dataset.reviewerOriginalScoreText ??
+            cells[idx]?.textContent ??
+            "";
+        const value = Number(sourceText.trim());
+        scores.push(Number.isFinite(value) ? value : 0);
+    }
+    return scores;
+}
+function getPlayerColumnIndexMap(table) {
+    const map = new Map();
+    const nameCells = Array.from(table.querySelectorAll('td[name="nm"]'));
+    nameCells.forEach((cell, index) => {
+        const name = (cell.textContent || "").trim();
+        if (name) {
+            map.set(name, index);
+        }
+    });
+    return map;
+}
+function getSeatIndexByName(name, playerColumnIndexMap) {
+    return playerColumnIndexMap.get(name.trim()) ?? -1;
+}
+function detectFoulSeat(scores, plusTenRule) {
+    let foundSeat = null;
+    scores.forEach((score, seat) => {
+        if (plusTenRule ? score <= -30 : score <= -40) {
+            foundSeat = seat;
+        }
+    });
+    return foundSeat;
+}
+function buildCompactScoreTexts(round, scores, plusTenRule, playerColumnIndexMap) {
+    const result = [0, 1, 2, 3].map(() => ({ text: "", foul: false }));
+    const foulSeat = detectFoulSeat(scores, plusTenRule);
+    if (foulSeat !== null) {
+        result[foulSeat] = {
+            text: plusTenRule ? "-10×3" : "-40",
+            foul: true,
+        };
+    }
+    if (!round.winners.length) {
+        return result;
+    }
+    const winnerSeat = getSeatIndexByName(round.winners[0]?.playerName || "", playerColumnIndexMap);
+    const discarderSeat = getSeatIndexByName(round.discarderNames[0] || "", playerColumnIndexMap);
+    const totalFan = round.winners[0]?.totalFan || 0;
+    if (winnerSeat < 0 || totalFan <= 0) {
+        return result;
+    }
+    if (round.selfDraw) {
+        result[winnerSeat] = {
+            text: foulSeat === winnerSeat
+                ? `${result[winnerSeat].text}${totalFan}×3`
+                : `${totalFan}×3`,
+            foul: foulSeat === winnerSeat,
+        };
+        return result;
+    }
+    result[winnerSeat] = { text: String(totalFan), foul: false };
+    if (discarderSeat >= 0) {
+        if (discarderSeat === foulSeat) {
+            result[discarderSeat] = {
+                text: `${result[discarderSeat].text}-${totalFan}`,
+                foul: true,
+            };
+        }
+        else {
+            result[discarderSeat] = {
+                text: `-${totalFan}`,
+                foul: false,
+            };
+        }
+    }
+    return result;
+}
+function applyScoreCompactMode(table, rounds, mode) {
+    const plusTenRule = isPlusTenFoulRule();
+    const roundMap = new Map();
+    const playerColumnIndexMap = getPlayerColumnIndexMap(table);
+    rounds.forEach((round) => roundMap.set(round.roundNo, round));
+    getRoundRows(table).forEach((row, rowIndex) => {
+        if (row.children.length < 9) {
+            return;
+        }
+        const roundNo = (table.querySelectorAll("tr[name='rdtr']").length ? rowIndex + 1 : 0) ||
+            parseRoundNoFromRow(row);
+        if (!roundNo) {
+            return;
+        }
+        const scores = parseDisplayedScores(row);
+        if (scores.length !== 4) {
+            return;
+        }
+        const displayed = mode === "compact"
+            ? buildCompactScoreTexts(roundMap.get(roundNo) || {
+                roundNo,
+                winners: [],
+                discarderNames: [],
+                selfDraw: false,
+            }, scores, plusTenRule, playerColumnIndexMap)
+            : scores.map((score) => ({ text: String(score), foul: false }));
+        displayed.forEach((item, seat) => {
+            const cell = row.children[seat * 2 + 1];
+            if (!cell) {
+                return;
+            }
+            if (!cell.dataset.reviewerOriginalScoreText) {
+                cell.dataset.reviewerOriginalScoreText = (cell.textContent || "").trim();
+                cell.dataset.reviewerOriginalScoreClass = cell.className;
+            }
+            const originalText = cell.dataset.reviewerOriginalScoreText || "";
+            const originalClass = cell.dataset.reviewerOriginalScoreClass || "";
+            if (mode === "original") {
+                cell.textContent = originalText;
+                cell.className = originalClass;
+                return;
+            }
+            cell.textContent = item.text;
+            cell.className = originalClass;
+            if (item.foul && !cell.classList.contains("f")) {
+                cell.classList.add("f");
+            }
+        });
+    });
+}
 function getRoundRows(table) {
     const rdtrRows = Array.from(table.querySelectorAll("tr[name='rdtr']"));
     return rdtrRows.length
@@ -4145,7 +4314,26 @@ function createModeButton(mode, label, activeMode, onClick) {
     button.addEventListener("click", () => onClick(mode));
     return button;
 }
-function ensureModeSwitcher(activeMode, onModeChange) {
+function createScoreCompactToggleButton(mode, onClick) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.scoreCompactMode = mode;
+    button.setAttribute(SCORE_COMPACT_TOGGLE_ATTR, mode);
+    button.textContent = `简洁得分：${mode === "compact" ? "开" : "关"}`;
+    button.style.border = "1px solid rgba(49,70,92,0.22)";
+    button.style.borderRadius = "4px";
+    button.style.background =
+        mode === "compact" ? "rgba(49, 70, 92, 0.14)" : "rgba(255,255,255,0.72)";
+    button.style.color = "rgba(49,70,92,0.9)";
+    button.style.cursor = "pointer";
+    button.style.padding = "3px 10px";
+    button.style.fontSize = "12px";
+    button.style.lineHeight = "1.2";
+    button.style.boxShadow = "none";
+    button.addEventListener("click", () => onClick(mode === "compact" ? "original" : "compact"));
+    return button;
+}
+function ensureModeSwitcher(activeMode, scoreCompactMode, onModeChange, onScoreCompactModeChange) {
     const table = findRoundTable();
     if (!table || !table.parentElement) {
         return;
@@ -4164,14 +4352,74 @@ function ensureModeSwitcher(activeMode, onModeChange) {
     switcher.appendChild(createModeButton("remark", "番种备注", activeMode, onModeChange));
     switcher.appendChild(createModeButton("detail", "下拉栏", activeMode, onModeChange));
     switcher.appendChild(createModeButton("original", "原始样式", activeMode, onModeChange));
+    switcher.appendChild(createScoreCompactToggleButton(scoreCompactMode, onScoreCompactModeChange));
     table.insertAdjacentElement("beforebegin", switcher);
+}
+function getRoundRemarkPattern(round) {
+    const fanEntries = [];
+    round.winners.forEach((winner) => {
+        winner.fanItems.forEach((fan) => {
+            if (fan.fanName === FLOWER_FAN_NAME) {
+                return;
+            }
+            const unitFan = Number.isFinite(fan.unitFan) ? fan.unitFan : 0;
+            const count = Number.isFinite(fan.count) ? fan.count : 0;
+            for (let idx = 0; idx < count; idx += 1) {
+                fanEntries.push({
+                    fanName: fan.fanName,
+                    unitFan,
+                });
+            }
+        });
+    });
+    if (!fanEntries.length) {
+        return null;
+    }
+    const twoFanEntries = fanEntries.filter((fan) => fan.unitFan === 2);
+    const oneFanEntries = fanEntries.filter((fan) => fan.unitFan === 1);
+    const onlyOneAndTwoFan = fanEntries.every((fan) => fan.unitFan === 1 || fan.unitFan === 2);
+    if (onlyOneAndTwoFan &&
+        twoFanEntries.length === 2 &&
+        oneFanEntries.length + twoFanEntries.length === fanEntries.length) {
+        const abbreviations = twoFanEntries
+            .map((fan) => COPPER_TWO_FAN_ABBREVIATIONS[fan.fanName])
+            .filter((value) => Boolean(value));
+        if (abbreviations.length === 2) {
+            return {
+                type: "silver",
+                label: `铜・${abbreviations.join("")}`,
+            };
+        }
+    }
+    if (onlyOneAndTwoFan &&
+        twoFanEntries.length === 1 &&
+        oneFanEntries.length + twoFanEntries.length === fanEntries.length) {
+        return {
+            type: "silver",
+            label: `银・${twoFanEntries[0]?.fanName || "番种未知"}`,
+        };
+    }
+    if (fanEntries.every((fan) => fan.unitFan === 1)) {
+        const yaojiukeCount = fanEntries.filter((fan) => fan.fanName === YAOJIUKE_FAN_NAME).length;
+        return {
+            type: "gold",
+            label: yaojiukeCount >= 2 ? "金Ⅱ" : "金Ⅰ",
+        };
+    }
+    return null;
 }
 function getMaxFanRemark(round) {
     if (!round.winners.length) {
-        return "荒庄";
+        return "";
+    }
+    const patternRemark = getRoundRemarkPattern(round);
+    if (patternRemark) {
+        return patternRemark.label;
     }
     let bestFanName = "番种未知";
     let bestFanValue = -1;
+    let fallbackFanName = "";
+    let skippedFlowerCandidate = null;
     round.winners.forEach((winner) => {
         if (!winner.fanItems.length && bestFanValue < 0) {
             bestFanName = "番种未知";
@@ -4182,12 +4430,40 @@ function getMaxFanRemark(round) {
             const fanValue = typeof fan.totalFan === "number" && Number.isFinite(fan.totalFan)
                 ? fan.totalFan
                 : fan.unitFan * fan.count;
+            if (!fallbackFanName && fan.fanName !== FLOWER_FAN_NAME) {
+                fallbackFanName = fan.fanName;
+            }
+            if (fan.fanName === FLOWER_FAN_NAME) {
+                if (!skippedFlowerCandidate ||
+                    fanValue > skippedFlowerCandidate.fanValue) {
+                    skippedFlowerCandidate = {
+                        fanName: fan.fanName,
+                        fanValue,
+                        playerName: winner.playerName,
+                    };
+                }
+                return;
+            }
             if (fanValue > bestFanValue) {
                 bestFanName = fan.fanName;
                 bestFanValue = fanValue;
             }
         });
     });
+    if (bestFanValue < 0 && fallbackFanName) {
+        bestFanName = fallbackFanName;
+        bestFanValue = 0;
+    }
+    if (skippedFlowerCandidate &&
+        skippedFlowerCandidate.fanValue > bestFanValue) {
+        warnLog("番种备注候选错误：已跳过花牌作为备注显示", {
+            roundNo: round.roundNo,
+            playerName: skippedFlowerCandidate.playerName,
+            fanName: skippedFlowerCandidate.fanName,
+            fanValue: skippedFlowerCandidate.fanValue,
+            fallbackFanName: bestFanName,
+        });
+    }
     return bestFanName;
 }
 function createRoundRemarkContent(round) {
@@ -4260,14 +4536,15 @@ function createRemarkCell(round) {
     trigger.style.padding = "0";
     trigger.style.border = "0";
     trigger.style.background = "transparent";
-    trigger.style.cursor = remark === "荒庄" ? "default" : "pointer";
-    trigger.style.color =
-        remark === "荒庄" ? "rgba(102,115,129,0.92)" : "rgba(49,70,92,0.96)";
+    trigger.style.cursor = remark ? "pointer" : "default";
+    trigger.style.color = remark
+        ? "rgba(49,70,92,0.96)"
+        : "rgba(102,115,129,0.92)";
     trigger.style.textDecoration = "none";
     trigger.style.font = "inherit";
     trigger.style.lineHeight = "inherit";
     trigger.title = remark;
-    if (remark !== "荒庄") {
+    if (remark) {
         trigger.addEventListener("click", () => openRoundWinPopover(trigger, round));
     }
     cell.appendChild(trigger);
@@ -4330,9 +4607,6 @@ function renderRemarkMode(table, rounds) {
         const round = roundMap.get(roundNo);
         const existingCell = row.querySelector(`.${ROUND_WIN_REMARK_CELL_CLASS}`);
         if (!round) {
-            if (existingCell) {
-                existingCell.remove();
-            }
             return;
         }
         const cell = createRemarkCell(round);
@@ -4435,10 +4709,14 @@ function applyRoundWinDisplayMode(mode, rounds, retryCount) {
         return;
     }
     clearRoundWinEnhancements();
-    ensureModeSwitcher(mode, (nextMode) => {
+    ensureModeSwitcher(mode, readScoreCompactMode(), (nextMode) => {
         writeRoundWinDisplayMode(nextMode);
         applyRoundWinDisplayMode(nextMode, rounds, 0);
+    }, (nextMode) => {
+        writeScoreCompactMode(nextMode);
+        applyRoundWinDisplayMode(mode, rounds, 0);
     });
+    applyScoreCompactMode(table, rounds, readScoreCompactMode());
     if (mode === "remark") {
         renderRemarkMode(table, rounds);
         return;
