@@ -302,7 +302,7 @@ function ensureModeSwitcher(
     createModeButton("remark", "番种备注", activeMode, onModeChange),
   );
   switcher.appendChild(
-    createModeButton("detail", "和牌详细", activeMode, onModeChange),
+    createModeButton("detail", "下拉栏", activeMode, onModeChange),
   );
   switcher.appendChild(
     createModeButton("original", "原始样式", activeMode, onModeChange),
@@ -457,6 +457,9 @@ function appendRemarkColumnScaffold(table: HTMLTableElement): void {
     table.querySelectorAll("tr"),
   ) as HTMLTableRowElement[];
   rows.forEach((row, index) => {
+    if (row.getAttribute("name") === "rdtr" && row.children.length === 0) {
+      return;
+    }
     if (
       row.querySelector(
         `.${ROUND_WIN_REMARK_HEADER_CLASS}, .${ROUND_WIN_REMARK_CELL_CLASS}`,
@@ -501,21 +504,25 @@ function renderRemarkMode(
   appendRemarkColumnScaffold(table);
 
   getRoundRows(table).forEach((row, rowIndex) => {
+    if (row.children.length === 0) {
+      return;
+    }
     const roundNo =
       (table.querySelectorAll("tr[name='rdtr']").length ? rowIndex + 1 : 0) ||
       parseRoundNoFromRow(row);
     if (!roundNo) {
       return;
     }
-    const round = roundMap.get(roundNo) || {
-      roundNo,
-      winners: [],
-      discarderNames: [],
-      selfDraw: false,
-    };
+    const round = roundMap.get(roundNo);
     const existingCell = row.querySelector(
       `.${ROUND_WIN_REMARK_CELL_CLASS}`,
     ) as HTMLTableCellElement | null;
+    if (!round) {
+      if (existingCell) {
+        existingCell.remove();
+      }
+      return;
+    }
     const cell = createRemarkCell(round);
     if (existingCell) {
       existingCell.replaceWith(cell);
