@@ -4172,6 +4172,31 @@ function parseDisplayedScores(row) {
     }
     return scores;
 }
+function parseOriginalScoreRoleClasses(row) {
+    const cells = Array.from(row.children);
+    const roles = [];
+    for (let idx = 1; idx < cells.length; idx += 2) {
+        const sourceClass = cells[idx]?.dataset.reviewerOriginalScoreClass ??
+            cells[idx]?.className ??
+            "";
+        if (sourceClass.includes("f")) {
+            roles.push("f");
+        }
+        else if (sourceClass.includes("w")) {
+            roles.push("w");
+        }
+        else if (sourceClass.includes("c")) {
+            roles.push("c");
+        }
+        else if (sourceClass.includes("n")) {
+            roles.push("n");
+        }
+        else {
+            roles.push("");
+        }
+    }
+    return roles;
+}
 function getPlayerColumnIndexMap(table) {
     const map = new Map();
     const nameCells = Array.from(table.querySelectorAll('td[name="nm"]'));
@@ -4186,18 +4211,13 @@ function getPlayerColumnIndexMap(table) {
 function getSeatIndexByName(name, playerColumnIndexMap) {
     return playerColumnIndexMap.get(name.trim()) ?? -1;
 }
-function detectFoulSeat(scores, plusTenRule) {
-    let foundSeat = null;
-    scores.forEach((score, seat) => {
-        if (plusTenRule ? score <= -30 : score <= -40) {
-            foundSeat = seat;
-        }
-    });
-    return foundSeat;
+function detectFoulSeat(scoreRoles) {
+    const foundSeat = scoreRoles.findIndex((role) => role === "f");
+    return foundSeat >= 0 ? foundSeat : null;
 }
-function buildCompactScoreTexts(round, scores, plusTenRule, playerColumnIndexMap) {
+function buildCompactScoreTexts(round, scores, plusTenRule, playerColumnIndexMap, scoreRoles) {
     const result = [0, 1, 2, 3].map(() => ({ text: "", foul: false }));
-    const foulSeat = detectFoulSeat(scores, plusTenRule);
+    const foulSeat = detectFoulSeat(scoreRoles);
     if (foulSeat !== null) {
         result[foulSeat] = {
             text: plusTenRule ? "-10×3" : "-40",
@@ -4254,6 +4274,7 @@ function applyScoreCompactMode(table, rounds, mode) {
             return;
         }
         const scores = parseDisplayedScores(row);
+        const scoreRoles = parseOriginalScoreRoleClasses(row);
         if (scores.length !== 4) {
             return;
         }
@@ -4263,7 +4284,7 @@ function applyScoreCompactMode(table, rounds, mode) {
                 winners: [],
                 discarderNames: [],
                 selfDraw: false,
-            }, scores, plusTenRule, playerColumnIndexMap)
+            }, scores, plusTenRule, playerColumnIndexMap, scoreRoles)
             : scores.map((score) => ({ text: String(score), foul: false }));
         displayed.forEach((item, seat) => {
             const cell = row.children[seat * 2 + 1];
