@@ -4,9 +4,12 @@ import { MetricsResult, RoundOutcome } from "./types";
 import { UI_RETRY_INTERVAL_MS, UI_RETRY_MAX_COUNT } from "./constants";
 
 type RoundWinDisplayMode = "remark" | "detail" | "original";
+type ScoreCompactMode = "original" | "compact";
 
 const ROUND_WIN_DISPLAY_MODE_KEY = "reviewer:game-win-display-mode";
+const SCORE_COMPACT_MODE_KEY = "reviewer:game-score-compact-mode";
 const DEFAULT_ROUND_WIN_DISPLAY_MODE: RoundWinDisplayMode = "remark";
+const DEFAULT_SCORE_COMPACT_MODE: ScoreCompactMode = "original";
 const ROUND_WIN_MODE_SWITCHER_ID = "reviewer-game-win-mode-switcher";
 const ROUND_WIN_POPOVER_ID = "reviewer-game-win-popover";
 const ROUND_WIN_REMARK_HEADER_CLASS = "reviewer-game-win-remark-header";
@@ -17,6 +20,7 @@ const ROUND_WIN_POPOVER_CLOSE_CLASS = "reviewer-game-win-popover-close";
 const ROUND_WIN_REMARK_MAX_WIDTH = "5em";
 const ROUND_WIN_POPOVER_AUTO_CLOSE_MS = 5000;
 const ROUND_WIN_REMARK_COLUMN_WIDTH = "7.5em";
+const SCORE_COMPACT_TOGGLE_ATTR = "data-score-compact-mode";
 const FLOWER_FAN_NAME = "花牌";
 const YAOJIUKE_FAN_NAME = "幺九刻";
 const COPPER_TWO_FAN_ABBREVIATIONS: Record<string, string> = {
@@ -236,8 +240,20 @@ function readRoundWinDisplayMode(): RoundWinDisplayMode {
   return DEFAULT_ROUND_WIN_DISPLAY_MODE;
 }
 
+function readScoreCompactMode(): ScoreCompactMode {
+  const stored = getLocalStorageItem(SCORE_COMPACT_MODE_KEY);
+  if (stored === "compact" || stored === "original") {
+    return stored;
+  }
+  return DEFAULT_SCORE_COMPACT_MODE;
+}
+
 function writeRoundWinDisplayMode(mode: RoundWinDisplayMode): void {
   setLocalStorageItem(ROUND_WIN_DISPLAY_MODE_KEY, mode);
+}
+
+function writeScoreCompactMode(mode: ScoreCompactMode): void {
+  setLocalStorageItem(SCORE_COMPACT_MODE_KEY, mode);
 }
 
 function closeActiveRoundWinPopover(): void {
@@ -265,6 +281,199 @@ function clearRoundWinEnhancements(): void {
   document
     .querySelectorAll(".reviewer-game-detail-row")
     .forEach((row) => row.remove());
+}
+
+function parseBaseScore(): number {
+  const cfgText = document.getElementById("cfg")?.textContent || "";
+  const match = cfgText.match(/\((\d+)\)/);
+  if (!match) {
+    return 8;
+  }
+  const value = Number(match[1]);
+  return Number.isFinite(value) ? value : 8;
+}
+
+function isPlusTenFoulRule(): boolean {
+  const cfgText = document.getElementById("cfg")?.textContent || "";
+  return cfgText.includes("-30/+10");
+}
+
+function parseDisplayedScores(row: HTMLTableRowElement): number[] {
+  const cells = Array.from(row.children) as HTMLTableCellElement[];
+  const scores: number[] = [];
+  for (let idx = 1; idx < cells.length; idx += 2) {
+    const sourceText =
+      cells[idx]?.dataset.reviewerOriginalScoreText ??
+      cells[idx]?.textContent ??
+      "";
+    const value = Number(sourceText.trim());
+    scores.push(Number.isFinite(value) ? value : 0);
+  }
+  return scores;
+}
+
+function getPlayerColumnIndexMap(table: HTMLTableElement): Map<string, number> {
+  const map = new Map<string, number>();
+  const nameCells = Array.from(
+    table.querySelectorAll('td[name="nm"]'),
+  ) as HTMLTableCellElement[];
+  nameCells.forEach((cell, index) => {
+    const name = (cell.textContent || "").trim();
+    if (name) {
+      map.set(name, index);
+    }
+  });
+  return map;
+}
+
+function getSeatIndexByName(
+  name: string,
+  playerColumnIndexMap: Map<string, number>,
+): number {
+  return playerColumnIndexMap.get(name.trim()) ?? -1;
+}
+
+function detectFoulSeat(scores: number[], plusTenRule: boolean): number | null {
+  let foundSeat: number | null = null;
+  scores.forEach((score, seat) => {
+    if (plusTenRule ? score <= -30 : score <= -40) {
+      foundSeat = seat;
+    }
+  });
+  return foundSeat;
+}
+
+function buildCompactScoreTexts(
+  round: RoundOutcome,
+  scores: number[],
+  plusTenRule: boolean,
+  playerColumnIndexMap: Map<string, number>,
+): Array<{ text: string; foul: boolean }> {
+  const result = [0, 1, 2, 3].map(() => ({ text: "", foul: false }));
+  const foulSeat = detectFoulSeat(scores, plusTenRule);
+  if (foulSeat !== null) {
+    result[foulSeat] = {
+      text: plusTenRule ? "-10×3" : "-40",
+      foul: true,
+    };
+  }
+
+  if (!round.winners.length) {
+    return result;
+  }
+
+  const winnerSeat = getSeatIndexByName(
+    round.winners[0]?.playerName || "",
+    playerColumnIndexMap,
+  );
+  const discarderSeat = getSeatIndexByName(
+    round.discarderNames[0] || "",
+    playerColumnIndexMap,
+  );
+  const totalFan = round.winners[0]?.totalFan || 0;
+  if (winnerSeat < 0 || totalFan <= 0) {
+    return result;
+  }
+
+  if (round.selfDraw) {
+    result[winnerSeat] = {
+      text:
+        foulSeat === winnerSeat
+          ? `${result[winnerSeat].text}${totalFan}×3`
+          : `${totalFan}×3`,
+      foul: foulSeat === winnerSeat,
+    };
+    return result;
+  }
+
+  result[winnerSeat] = { text: String(totalFan), foul: false };
+
+  if (discarderSeat >= 0) {
+    if (discarderSeat === foulSeat) {
+      result[discarderSeat] = {
+        text: `${result[discarderSeat].text}-${totalFan}`,
+        foul: true,
+      };
+    } else {
+      result[discarderSeat] = {
+        text: `-${totalFan}`,
+        foul: false,
+      };
+    }
+  }
+
+  return result;
+}
+
+function applyScoreCompactMode(
+  table: HTMLTableElement,
+  rounds: RoundOutcome[],
+  mode: ScoreCompactMode,
+): void {
+  const plusTenRule = isPlusTenFoulRule();
+  const roundMap = new Map<number, RoundOutcome>();
+  const playerColumnIndexMap = getPlayerColumnIndexMap(table);
+  rounds.forEach((round) => roundMap.set(round.roundNo, round));
+
+  getRoundRows(table).forEach((row, rowIndex) => {
+    if (row.children.length < 9) {
+      return;
+    }
+    const roundNo =
+      (table.querySelectorAll("tr[name='rdtr']").length ? rowIndex + 1 : 0) ||
+      parseRoundNoFromRow(row);
+    if (!roundNo) {
+      return;
+    }
+    const scores = parseDisplayedScores(row);
+    if (scores.length !== 4) {
+      return;
+    }
+
+    const displayed =
+      mode === "compact"
+        ? buildCompactScoreTexts(
+            roundMap.get(roundNo) || {
+              roundNo,
+              winners: [],
+              discarderNames: [],
+              selfDraw: false,
+            },
+            scores,
+            plusTenRule,
+            playerColumnIndexMap,
+          )
+        : scores.map((score) => ({ text: String(score), foul: false }));
+
+    displayed.forEach((item, seat) => {
+      const cell = row.children[seat * 2 + 1] as
+        | HTMLTableCellElement
+        | undefined;
+      if (!cell) {
+        return;
+      }
+      if (!cell.dataset.reviewerOriginalScoreText) {
+        cell.dataset.reviewerOriginalScoreText = (
+          cell.textContent || ""
+        ).trim();
+        cell.dataset.reviewerOriginalScoreClass = cell.className;
+      }
+      const originalText = cell.dataset.reviewerOriginalScoreText || "";
+      const originalClass = cell.dataset.reviewerOriginalScoreClass || "";
+
+      if (mode === "original") {
+        cell.textContent = originalText;
+        cell.className = originalClass;
+        return;
+      }
+
+      cell.textContent = item.text;
+      cell.className = originalClass;
+      if (item.foul && !cell.classList.contains("f")) {
+        cell.classList.add("f");
+      }
+    });
+  });
 }
 
 function getRoundRows(table: HTMLTableElement): HTMLTableRowElement[] {
@@ -301,9 +510,36 @@ function createModeButton(
   return button;
 }
 
+function createScoreCompactToggleButton(
+  mode: ScoreCompactMode,
+  onClick: (mode: ScoreCompactMode) => void,
+): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.dataset.scoreCompactMode = mode;
+  button.setAttribute(SCORE_COMPACT_TOGGLE_ATTR, mode);
+  button.textContent = `简洁得分：${mode === "compact" ? "开" : "关"}`;
+  button.style.border = "1px solid rgba(49,70,92,0.22)";
+  button.style.borderRadius = "4px";
+  button.style.background =
+    mode === "compact" ? "rgba(49, 70, 92, 0.14)" : "rgba(255,255,255,0.72)";
+  button.style.color = "rgba(49,70,92,0.9)";
+  button.style.cursor = "pointer";
+  button.style.padding = "3px 10px";
+  button.style.fontSize = "12px";
+  button.style.lineHeight = "1.2";
+  button.style.boxShadow = "none";
+  button.addEventListener("click", () =>
+    onClick(mode === "compact" ? "original" : "compact"),
+  );
+  return button;
+}
+
 function ensureModeSwitcher(
   activeMode: RoundWinDisplayMode,
+  scoreCompactMode: ScoreCompactMode,
   onModeChange: (mode: RoundWinDisplayMode) => void,
+  onScoreCompactModeChange: (mode: ScoreCompactMode) => void,
 ): void {
   const table = findRoundTable();
   if (!table || !table.parentElement) {
@@ -331,6 +567,9 @@ function ensureModeSwitcher(
   );
   switcher.appendChild(
     createModeButton("original", "原始样式", activeMode, onModeChange),
+  );
+  switcher.appendChild(
+    createScoreCompactToggleButton(scoreCompactMode, onScoreCompactModeChange),
   );
 
   table.insertAdjacentElement("beforebegin", switcher);
@@ -789,10 +1028,19 @@ function applyRoundWinDisplayMode(
   }
 
   clearRoundWinEnhancements();
-  ensureModeSwitcher(mode, (nextMode) => {
-    writeRoundWinDisplayMode(nextMode);
-    applyRoundWinDisplayMode(nextMode, rounds, 0);
-  });
+  ensureModeSwitcher(
+    mode,
+    readScoreCompactMode(),
+    (nextMode) => {
+      writeRoundWinDisplayMode(nextMode);
+      applyRoundWinDisplayMode(nextMode, rounds, 0);
+    },
+    (nextMode) => {
+      writeScoreCompactMode(nextMode);
+      applyRoundWinDisplayMode(mode, rounds, 0);
+    },
+  );
+  applyScoreCompactMode(table, rounds, readScoreCompactMode());
 
   if (mode === "remark") {
     renderRemarkMode(table, rounds);

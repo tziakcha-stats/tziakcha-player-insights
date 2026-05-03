@@ -7,6 +7,34 @@ import {
 } from "../../src/features/game/ui-render";
 import { RoundOutcome } from "../../src/features/game/types";
 
+type MemoryStorage = {
+  getItem: (key: string) => string | null;
+  setItem: (key: string, value: string) => void;
+  clear: () => void;
+};
+
+function createMemoryStorage(): MemoryStorage {
+  const store = new Map<string, string>();
+  return {
+    getItem(key) {
+      return store.has(key) ? store.get(key) || null : null;
+    },
+    setItem(key, value) {
+      store.set(key, value);
+    },
+    clear() {
+      store.clear();
+    },
+  };
+}
+
+const memoryStorage = createMemoryStorage();
+
+Object.defineProperty(window, "localStorage", {
+  configurable: true,
+  value: memoryStorage,
+});
+
 function setupScoreTable(): HTMLTableRowElement {
   document.body.innerHTML = `
     <table class="table">
@@ -127,6 +155,128 @@ function setupSparseRoundTable(): HTMLTableElement {
   return document.getElementById("round-table") as HTMLTableElement;
 }
 
+function setupScoreRoundTable(
+  configText = "配置：16盘 | 8番 (8) | 错和 鸣牌 ✓ -30/+10 | 随机座位",
+): HTMLTableElement {
+  document.body.innerHTML = `
+    <h6 id="cfg">${configText}</h6>
+    <table class="table" id="round-table">
+      <tbody>
+        <tr>
+          <th class="bg-secondary text-light">选手姓名</th>
+          <td class="bg-secondary text-light" colspan="2" name="nm">A</td>
+          <td class="bg-secondary text-light" colspan="2" name="nm">B</td>
+          <td class="bg-secondary text-light" colspan="2" name="nm">C</td>
+          <td class="bg-secondary text-light" colspan="2" name="nm">D</td>
+        </tr>
+        <tr>
+          <th>开局座位</th>
+          <td colspan="2">东</td>
+          <td colspan="2">南</td>
+          <td colspan="2">西</td>
+          <td colspan="2">北</td>
+        </tr>
+        <tr>
+          <th>每圈座位</th>
+          <td colspan="2">东南西北</td>
+          <td colspan="2">东南西北</td>
+          <td colspan="2">东南西北</td>
+          <td colspan="2">东南西北</td>
+        </tr>
+        <tr>
+          <th class="bg-secondary text-light">盘序</th>
+          <td class="bg-secondary text-light">得分</td>
+          <td class="bg-secondary text-light">累计</td>
+          <td class="bg-secondary text-light">得分</td>
+          <td class="bg-secondary text-light">累计</td>
+          <td class="bg-secondary text-light">得分</td>
+          <td class="bg-secondary text-light">累计</td>
+          <td class="bg-secondary text-light">得分</td>
+          <td class="bg-secondary text-light">累计</td>
+        </tr>
+        <tr name="rdtr" id="round-row-1">
+          <td>1</td>
+          <td>-8</td>
+          <td>92</td>
+          <td>-16</td>
+          <td>84</td>
+          <td>-8</td>
+          <td>92</td>
+          <td>32</td>
+          <td>132</td>
+        </tr>
+        <tr name="rdtr" id="round-row-2">
+          <td>2</td>
+          <td>-16</td>
+          <td>76</td>
+          <td>-16</td>
+          <td>68</td>
+          <td>-16</td>
+          <td>76</td>
+          <td>48</td>
+          <td>180</td>
+        </tr>
+        <tr name="rdtr" id="round-row-3">
+          <td>3</td>
+          <td>10</td>
+          <td>86</td>
+          <td>10</td>
+          <td>78</td>
+          <td>-30</td>
+          <td>46</td>
+          <td>10</td>
+          <td>190</td>
+        </tr>
+        <tr name="rdtr" id="round-row-4">
+          <td>4</td>
+          <td>-38</td>
+          <td>48</td>
+          <td>-10</td>
+          <td>68</td>
+          <td>2</td>
+          <td>48</td>
+          <td>46</td>
+          <td>236</td>
+        </tr>
+        <tr name="rdtr" id="round-row-5">
+          <td>5</td>
+          <td>-50</td>
+          <td>-2</td>
+          <td>2</td>
+          <td>70</td>
+          <td>2</td>
+          <td>50</td>
+          <td>46</td>
+          <td>282</td>
+        </tr>
+        <tr id="summary-row">
+          <th class="bg-secondary text-light">合计</th>
+          <td class="bg-secondary text-light" colspan="2">100</td>
+          <td class="bg-secondary text-light" colspan="2">100</td>
+          <td class="bg-secondary text-light" colspan="2">100</td>
+          <td class="bg-secondary text-light" colspan="2">100</td>
+        </tr>
+        <tr id="rank-row">
+          <th class="bg-secondary text-light">名次</th>
+          <td class="bg-secondary text-light" colspan="2">1</td>
+          <td class="bg-secondary text-light" colspan="2">2</td>
+          <td class="bg-secondary text-light" colspan="2">3</td>
+          <td class="bg-secondary text-light" colspan="2">4</td>
+        </tr>
+        <tr id="standard-row">
+          <th class="bg-secondary text-light">标准分</th>
+          <td class="bg-secondary text-light" colspan="2">45.0</td>
+          <td class="bg-secondary text-light" colspan="2">15.0</td>
+          <td class="bg-secondary text-light" colspan="2">-5.0</td>
+          <td class="bg-secondary text-light" colspan="2">-55.0</td>
+        </tr>
+      </tbody>
+    </table>
+  `;
+
+  return document.getElementById("round-table") as HTMLTableElement;
+}
+
 function buildRounds(): RoundOutcome[] {
   return [
     {
@@ -180,6 +330,7 @@ function buildRounds(): RoundOutcome[] {
 describe("game ui render", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    memoryStorage.clear();
   });
 
   it("keeps round toggle buttons when showing the unfinished-session message", () => {
@@ -833,5 +984,183 @@ describe("game ui render", () => {
     closeButton?.click();
 
     expect(document.querySelector(".reviewer-game-win-popover")).toBeNull();
+  });
+
+  it("adds a remembered compact-score toggle and rewrites score cells when enabled", () => {
+    setupScoreRoundTable();
+
+    installRoundWinDisplayModes([
+      {
+        roundNo: 1,
+        winners: [
+          {
+            playerName: "D",
+            totalFan: 8,
+            fanItems: [],
+          },
+        ],
+        discarderNames: ["B"],
+        selfDraw: false,
+      },
+      {
+        roundNo: 2,
+        winners: [
+          {
+            playerName: "D",
+            totalFan: 8,
+            fanItems: [],
+          },
+        ],
+        discarderNames: [],
+        selfDraw: true,
+      },
+      {
+        roundNo: 3,
+        winners: [],
+        discarderNames: [],
+        selfDraw: false,
+      },
+      {
+        roundNo: 4,
+        winners: [
+          {
+            playerName: "D",
+            totalFan: 12,
+            fanItems: [],
+          },
+        ],
+        discarderNames: ["B"],
+        selfDraw: false,
+      },
+      {
+        roundNo: 5,
+        winners: [
+          {
+            playerName: "D",
+            totalFan: 12,
+            fanItems: [],
+          },
+        ],
+        discarderNames: ["A"],
+        selfDraw: false,
+      },
+    ]);
+
+    const toggle = document.querySelector(
+      "button[data-score-compact-mode]",
+    ) as HTMLButtonElement | null;
+    expect(toggle?.textContent).toContain("简洁得分：关");
+
+    toggle?.click();
+
+    const updatedToggle = document.querySelector(
+      "button[data-score-compact-mode]",
+    ) as HTMLButtonElement | null;
+    expect(updatedToggle?.textContent).toContain("简洁得分：开");
+    expect(localStorage.getItem("reviewer:game-score-compact-mode")).toBe(
+      "compact",
+    );
+
+    const row1 = document.querySelectorAll("#round-row-1 td");
+    const row2 = document.querySelectorAll("#round-row-2 td");
+    const row3 = document.querySelectorAll("#round-row-3 td");
+    const row4 = document.querySelectorAll("#round-row-4 td");
+    const row5 = document.querySelectorAll("#round-row-5 td");
+
+    expect(row1[1]?.textContent).toBe("");
+    expect(row1[3]?.textContent).toBe("-8");
+    expect(row1[5]?.textContent).toBe("");
+    expect(row1[7]?.textContent).toBe("8");
+
+    expect(row2[1]?.textContent).toBe("");
+    expect(row2[3]?.textContent).toBe("");
+    expect(row2[5]?.textContent).toBe("");
+    expect(row2[7]?.textContent).toBe("8×3");
+
+    expect(row3[1]?.textContent).toBe("");
+    expect(row3[3]?.textContent).toBe("");
+    expect(row3[5]?.textContent).toBe("-10×3");
+    expect(row3[7]?.textContent).toBe("");
+    expect(row3[5]?.className).toContain("f");
+
+    expect(row4[1]?.textContent).toBe("-10×3");
+    expect(row4[3]?.textContent).toBe("-12");
+    expect(row4[5]?.textContent).toBe("");
+    expect(row4[7]?.textContent).toBe("12");
+    expect(row4[1]?.className).toContain("f");
+
+    expect(row5[1]?.textContent).toBe("-10×3-12");
+    expect(row5[3]?.textContent).toBe("");
+    expect(row5[5]?.textContent).toBe("");
+    expect(row5[7]?.textContent).toBe("12");
+    expect(row5[1]?.className).toContain("f");
+  });
+
+  it("supports compact score display for -40/+0 foul rules", () => {
+    setupScoreRoundTable(
+      "配置：16盘 | 8番 (8) | 错和 鸣牌 ✓ -40/+0 | 随机座位",
+    );
+
+    const round2 = document.getElementById("round-row-2");
+    const round3 = document.getElementById("round-row-3");
+    if (round2 && round3) {
+      round2.innerHTML =
+        "<td>2</td><td>-30</td><td>70</td><td>-70</td><td>30</td><td>90</td><td>190</td><td>-30</td><td>70</td>";
+      round3.innerHTML =
+        "<td>3</td><td>-8</td><td>62</td><td>-70</td><td>-40</td><td>46</td><td>236</td><td>-8</td><td>62</td>";
+    }
+
+    installRoundWinDisplayModes([
+      {
+        roundNo: 1,
+        winners: [],
+        discarderNames: [],
+        selfDraw: false,
+      },
+      {
+        roundNo: 2,
+        winners: [
+          {
+            playerName: "C",
+            totalFan: 22,
+            fanItems: [],
+          },
+        ],
+        discarderNames: [],
+        selfDraw: true,
+      },
+      {
+        roundNo: 3,
+        winners: [
+          {
+            playerName: "C",
+            totalFan: 22,
+            fanItems: [],
+          },
+        ],
+        discarderNames: ["B"],
+        selfDraw: false,
+      },
+    ]);
+
+    const toggle = document.querySelector(
+      "button[data-score-compact-mode]",
+    ) as HTMLButtonElement | null;
+    toggle?.click();
+
+    const row2 = document.querySelectorAll("#round-row-2 td");
+    const row3 = document.querySelectorAll("#round-row-3 td");
+
+    expect(row2[1]?.textContent).toBe("");
+    expect(row2[3]?.textContent).toBe("-40");
+    expect(row2[5]?.textContent).toBe("22×3");
+    expect(row2[7]?.textContent).toBe("");
+    expect(row2[3]?.className).toContain("f");
+
+    expect(row3[1]?.textContent).toBe("");
+    expect(row3[3]?.textContent).toBe("-40-22");
+    expect(row3[5]?.textContent).toBe("22");
+    expect(row3[7]?.textContent).toBe("");
+    expect(row3[3]?.className).toContain("f");
   });
 });
