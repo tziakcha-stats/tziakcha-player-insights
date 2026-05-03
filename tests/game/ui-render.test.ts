@@ -1,6 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import {
   installRoundToggleButtons,
   installRoundWinDisplayModes,
@@ -31,7 +29,6 @@ function createMemoryStorage(): MemoryStorage {
 }
 
 const memoryStorage = createMemoryStorage();
-const tmpHtml = readFileSync(resolve(process.cwd(), "tmp.html"), "utf8");
 
 Object.defineProperty(window, "localStorage", {
   configurable: true,
@@ -280,33 +277,57 @@ function setupScoreRoundTable(
   return document.getElementById("round-table") as HTMLTableElement;
 }
 
-function setupTmpHtmlCompactScoreTable(): HTMLTableElement {
-  const rows = Array.from(tmpHtml.matchAll(/<tr[\s\S]*?<\/tr>/g)).map(
-    (match) => match[0],
-  );
-  const targetRow = rows.find((row) => row.includes("record/?id=pVpFRAVE"));
-  if (!targetRow) {
-    throw new Error("tmp.html missing target row pVpFRAVE");
-  }
-
+function setupRealFixtureCompactScoreTable(): HTMLTableElement {
   document.body.innerHTML = `
     <h6 id="cfg">配置：16盘 | 8番 (8) | 错和 鸣牌 ✕ -40/+0 | 随机座位</h6>
     <table class="table" id="round-table">
       <tbody>
-        ${rows.slice(0, 4).join("")}
-        ${targetRow}
+        <tr>
+          <th class="bg-secondary text-light" style="width:16%;">选手姓名</th>
+          <td class="bg-secondary text-light" colspan="2" name="nm" style="width:21%;">双色清龙</td>
+          <td class="bg-secondary text-light" colspan="2" name="nm" style="width:21%;">暮桥疏雨</td>
+          <td class="bg-secondary text-light" colspan="2" name="nm" style="width:21%;">★ 海伯利安</td>
+          <td class="bg-secondary text-light" colspan="2" name="nm" style="width:21%;">截和天地人和</td>
+        </tr>
+        <tr>
+          <th>开局座位</th>
+          <td colspan="2">东</td>
+          <td colspan="2">南</td>
+          <td colspan="2">西</td>
+          <td colspan="2">北</td>
+        </tr>
+        <tr>
+          <th>每圈座位</th>
+          <td colspan="2">东-南-北-西</td>
+          <td colspan="2">南-东-西-北</td>
+          <td colspan="2">西-北-东-南</td>
+          <td colspan="2">北-西-南-东</td>
+        </tr>
+        <tr>
+          <th class="bg-secondary text-light">盘序</th>
+          <td class="bg-secondary text-light">得分</td>
+          <td class="bg-secondary text-light">累计</td>
+          <td class="bg-secondary text-light">得分</td>
+          <td class="bg-secondary text-light">累计</td>
+          <td class="bg-secondary text-light">得分</td>
+          <td class="bg-secondary text-light">累计</td>
+          <td class="bg-secondary text-light">得分</td>
+          <td class="bg-secondary text-light">累计</td>
+        </tr>
+        <tr name="rdtr" id="tmp-round-row">
+          <td>1</td>
+          <td class="n">-8</td>
+          <td>-120</td>
+          <td class="n">-8</td>
+          <td>-100</td>
+          <td class="w">64</td>
+          <td>80</td>
+          <td class="c">-48</td>
+          <td>140</td>
+        </tr>
       </tbody>
     </table>
   `;
-
-  const roundRow = document.querySelector('tr[name="rdtr"]');
-  if (roundRow) {
-    roundRow.id = "tmp-round-row";
-    const firstCell = roundRow.children[0] as HTMLTableCellElement | undefined;
-    if (firstCell) {
-      firstCell.textContent = "1";
-    }
-  }
 
   return document.getElementById("round-table") as HTMLTableElement;
 }
@@ -1276,8 +1297,8 @@ describe("game ui render", () => {
     });
   });
 
-  it("uses tmp.html row data to render the problematic ron row correctly in compact mode", () => {
-    setupTmpHtmlCompactScoreTable();
+  it("uses a real captured row fixture to render the problematic ron row correctly in compact mode", () => {
+    setupRealFixtureCompactScoreTable();
 
     installRoundWinDisplayModes([
       {
