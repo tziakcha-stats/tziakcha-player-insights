@@ -339,6 +339,7 @@ function buildRounds(): RoundOutcome[] {
       winners: [
         {
           playerName: "A",
+          playerIndex: 0,
           totalFan: 8,
           fanItems: [
             {
@@ -358,13 +359,13 @@ function buildRounds(): RoundOutcome[] {
           ],
         },
       ],
-      discarderNames: ["B"],
+      discarders: [{ playerName: "B", playerIndex: 1 }],
       selfDraw: false,
     },
     {
       roundNo: 2,
       winners: [],
-      discarderNames: [],
+      discarders: [],
       selfDraw: false,
     },
     {
@@ -372,11 +373,12 @@ function buildRounds(): RoundOutcome[] {
       winners: [
         {
           playerName: "C",
+          playerIndex: 2,
           totalFan: 1,
           fanItems: [],
         },
       ],
-      discarderNames: [],
+      discarders: [],
       selfDraw: true,
     },
   ];
@@ -419,7 +421,7 @@ describe("game ui render", () => {
       {
         roundNo: 1,
         winners: [],
-        discarderNames: [],
+        discarders: [],
         selfDraw: false,
       },
     ]);
@@ -598,6 +600,7 @@ describe("game ui render", () => {
         winners: [
           {
             playerName: "A",
+            playerIndex: 0,
             totalFan: 3,
             fanItems: [
               {
@@ -610,7 +613,7 @@ describe("game ui render", () => {
             ],
           },
         ],
-        discarderNames: ["B"],
+        discarders: [{ playerName: "B", playerIndex: 1 }],
         selfDraw: false,
       },
     ]);
@@ -639,6 +642,7 @@ describe("game ui render", () => {
         winners: [
           {
             playerName: "A",
+            playerIndex: 0,
             totalFan: 3,
             fanItems: [
               {
@@ -651,7 +655,7 @@ describe("game ui render", () => {
             ],
           },
         ],
-        discarderNames: ["B"],
+        discarders: [{ playerName: "B", playerIndex: 1 }],
         selfDraw: false,
       },
     ]);
@@ -687,6 +691,7 @@ describe("game ui render", () => {
         winners: [
           {
             playerName: "CatHikari",
+            playerIndex: 0,
             totalFan: 12,
             fanItems: [
               {
@@ -713,19 +718,19 @@ describe("game ui render", () => {
             ],
           },
         ],
-        discarderNames: ["Choimoe"],
+        discarders: [{ playerName: "Choimoe", playerIndex: 0 }],
         selfDraw: false,
       },
       {
         roundNo: 2,
         winners: [],
-        discarderNames: [],
+        discarders: [],
         selfDraw: false,
       },
       {
         roundNo: 3,
         winners: [],
-        discarderNames: [],
+        discarders: [],
         selfDraw: false,
       },
     ]);
@@ -747,6 +752,7 @@ describe("game ui render", () => {
         winners: [
           {
             playerName: "HZ",
+            playerIndex: 0,
             totalFan: 11,
             fanItems: [
               {
@@ -773,7 +779,7 @@ describe("game ui render", () => {
             ],
           },
         ],
-        discarderNames: [],
+        discarders: [],
         selfDraw: true,
       },
     ]);
@@ -795,6 +801,7 @@ describe("game ui render", () => {
         winners: [
           {
             playerName: "A",
+            playerIndex: 0,
             totalFan: 8,
             fanItems: [
               {
@@ -828,7 +835,7 @@ describe("game ui render", () => {
             ],
           },
         ],
-        discarderNames: ["B"],
+        discarders: [{ playerName: "B", playerIndex: 1 }],
         selfDraw: false,
       },
     ]);
@@ -849,6 +856,7 @@ describe("game ui render", () => {
         winners: [
           {
             playerName: "A",
+            playerIndex: 0,
             totalFan: 8,
             fanItems: [
               {
@@ -889,7 +897,7 @@ describe("game ui render", () => {
             ],
           },
         ],
-        discarderNames: ["B"],
+        discarders: [{ playerName: "B", playerIndex: 1 }],
         selfDraw: false,
       },
     ]);
@@ -910,6 +918,7 @@ describe("game ui render", () => {
         winners: [
           {
             playerName: "A",
+            playerIndex: 0,
             totalFan: 4,
             fanItems: [
               {
@@ -943,7 +952,7 @@ describe("game ui render", () => {
             ],
           },
         ],
-        discarderNames: [],
+        discarders: [],
         selfDraw: true,
       },
     ]);
@@ -964,6 +973,7 @@ describe("game ui render", () => {
         winners: [
           {
             playerName: "A",
+            playerIndex: 0,
             totalFan: 5,
             fanItems: [
               {
@@ -997,7 +1007,7 @@ describe("game ui render", () => {
             ],
           },
         ],
-        discarderNames: ["B"],
+        discarders: [{ playerName: "B", playerIndex: 1 }],
         selfDraw: false,
       },
     ]);
@@ -1050,11 +1060,12 @@ describe("game ui render", () => {
         winners: [
           {
             playerName: "D",
+            playerIndex: 3,
             totalFan: 8,
             fanItems: [],
           },
         ],
-        discarderNames: ["B"],
+        discarders: [{ playerName: "B", playerIndex: 1 }],
         selfDraw: false,
       },
       {
@@ -1062,17 +1073,18 @@ describe("game ui render", () => {
         winners: [
           {
             playerName: "D",
+            playerIndex: 3,
             totalFan: 8,
             fanItems: [],
           },
         ],
-        discarderNames: [],
+        discarders: [],
         selfDraw: true,
       },
       {
         roundNo: 3,
         winners: [],
-        discarderNames: [],
+        discarders: [],
         selfDraw: false,
       },
       {
@@ -1080,11 +1092,12 @@ describe("game ui render", () => {
         winners: [
           {
             playerName: "D",
+            playerIndex: 3,
             totalFan: 12,
             fanItems: [],
           },
         ],
-        discarderNames: ["B"],
+        discarders: [{ playerName: "B", playerIndex: 1 }],
         selfDraw: false,
       },
       {
@@ -1092,11 +1105,12 @@ describe("game ui render", () => {
         winners: [
           {
             playerName: "D",
+            playerIndex: 3,
             totalFan: 12,
             fanItems: [],
           },
         ],
-        discarderNames: ["A"],
+        discarders: [{ playerName: "A", playerIndex: 0 }],
         selfDraw: false,
       },
     ]);
@@ -1169,7 +1183,7 @@ describe("game ui render", () => {
       {
         roundNo: 1,
         winners: [],
-        discarderNames: [],
+        discarders: [],
         selfDraw: false,
       },
       {
@@ -1177,11 +1191,12 @@ describe("game ui render", () => {
         winners: [
           {
             playerName: "C",
+            playerIndex: 2,
             totalFan: 22,
             fanItems: [],
           },
         ],
-        discarderNames: [],
+        discarders: [],
         selfDraw: true,
       },
       {
@@ -1189,11 +1204,12 @@ describe("game ui render", () => {
         winners: [
           {
             playerName: "C",
+            playerIndex: 2,
             totalFan: 22,
             fanItems: [],
           },
         ],
-        discarderNames: ["B"],
+        discarders: [{ playerName: "B", playerIndex: 1 }],
         selfDraw: false,
       },
     ]);
@@ -1234,11 +1250,12 @@ describe("game ui render", () => {
         winners: [
           {
             playerName: "C",
+            playerIndex: 2,
             totalFan: 16,
             fanItems: [],
           },
         ],
-        discarderNames: ["D"],
+        discarders: [{ playerName: "D", playerIndex: 3 }],
         selfDraw: false,
       },
     ]);
@@ -1276,11 +1293,12 @@ describe("game ui render", () => {
         winners: [
           {
             playerName: "C",
+            playerIndex: 2,
             totalFan: 16,
             fanItems: [],
           },
         ],
-        discarderNames: ["D"],
+        discarders: [{ playerName: "D", playerIndex: 3 }],
         selfDraw: false,
       },
     ]);
@@ -1306,11 +1324,12 @@ describe("game ui render", () => {
         winners: [
           {
             playerName: "★ 海伯利安",
+            playerIndex: 2,
             totalFan: 40,
             fanItems: [],
           },
         ],
-        discarderNames: ["截和天地人和"],
+        discarders: [{ playerName: "截和天地人和", playerIndex: 3 }],
         selfDraw: false,
       },
     ]);

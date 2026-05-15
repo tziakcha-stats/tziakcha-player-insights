@@ -54,7 +54,7 @@ describe("game feature entry", () => {
       {
         roundNo: 1,
         winners: [],
-        discarderNames: [],
+        discarders: [],
         selfDraw: false,
       },
     ]);
@@ -74,7 +74,7 @@ describe("game feature entry", () => {
       {
         roundNo: 1,
         winners: [],
-        discarderNames: [],
+        discarders: [],
         selfDraw: false,
       },
     ]);
