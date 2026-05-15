@@ -476,10 +476,13 @@ function validateCompactScoreRound(
       : [0, 0, 0, 0];
 
   const scoreMismatch = expectedScores.some(
-    (value, index) => value !== actualScores[index],
+    (value, index) =>
+      compactScores[index].text.trim() && value !== actualScores[index],
   );
   const totalMismatch = expectedScores.some(
-    (value, index) => previousTotals[index] + value !== displayedTotals[index],
+    (value, index) =>
+      compactScores[index].text.trim() &&
+      previousTotals[index] + value !== displayedTotals[index],
   );
 
   if (scoreMismatch || totalMismatch) {
