@@ -96,10 +96,14 @@ export function computeRoundOutcomes(
       roundNo: round.roundNo,
       winners: round.winners.map((winner) => ({
         playerName: winner.playerName,
+        playerIndex: winner.playerIndex,
         totalFan: winner.totalFan,
         fanItems: winner.fanItems,
       })),
-      discarderNames: round.discarders.map((discarder) => discarder.playerName),
+      discarders: round.discarders.map((discarder) => ({
+        playerName: discarder.playerName,
+        playerIndex: discarder.playerIndex,
+      })),
       selfDraw: round.selfDraw,
     };
   });

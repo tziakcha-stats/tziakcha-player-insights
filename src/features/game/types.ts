@@ -11,10 +11,14 @@ export type RoundOutcome = {
   roundNo: number;
   winners: Array<{
     playerName: string;
+    playerIndex: number;
     totalFan: number;
     fanItems: WinFanItem[];
   }>;
-  discarderNames: string[];
+  discarders: Array<{
+    playerName: string;
+    playerIndex: number;
+  }>;
   selfDraw: boolean;
 };
 

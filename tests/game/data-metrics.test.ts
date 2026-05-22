@@ -63,6 +63,7 @@ describe("data metrics", () => {
         winners: [
           {
             playerName: "A",
+            playerIndex: 0,
             totalFan: 8,
             fanItems: [
               {
@@ -75,7 +76,7 @@ describe("data metrics", () => {
             ],
           },
         ],
-        discarderNames: ["B"],
+        discarders: [{ playerName: "B", playerIndex: 1 }],
         selfDraw: false,
       },
       {
@@ -83,6 +84,7 @@ describe("data metrics", () => {
         winners: [
           {
             playerName: "D",
+            playerIndex: 3,
             totalFan: 1,
             fanItems: [
               {
@@ -95,7 +97,7 @@ describe("data metrics", () => {
             ],
           },
         ],
-        discarderNames: [],
+        discarders: [],
         selfDraw: true,
       },
     ]);
@@ -194,6 +196,7 @@ describe("data metrics", () => {
         winners: [
           {
             playerName: "A",
+            playerIndex: 0,
             totalFan: 8,
             fanItems: [
               {
@@ -206,7 +209,7 @@ describe("data metrics", () => {
             ],
           },
         ],
-        discarderNames: ["B"],
+        discarders: [{ playerName: "B", playerIndex: 1 }],
         selfDraw: false,
       },
     ]);
@@ -281,6 +284,7 @@ describe("data metrics", () => {
         winners: [
           {
             playerName: "B",
+            playerIndex: 1,
             totalFan: 3,
             fanItems: [
               {
@@ -293,7 +297,7 @@ describe("data metrics", () => {
             ],
           },
         ],
-        discarderNames: ["C"],
+        discarders: [{ playerName: "C", playerIndex: 2 }],
         selfDraw: false,
       },
     ]);

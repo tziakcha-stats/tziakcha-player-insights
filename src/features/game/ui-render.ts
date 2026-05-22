@@ -214,7 +214,7 @@ function appendRoundDetailContent(
   const baseInfo = document.createElement("div");
   const losePart = round.selfDraw
     ? "自摸"
-    : `放铳：${round.discarderNames.join("、") || "未知"}`;
+    : `放铳：${round.discarders.map((d) => d.playerName).join("、") || "未知"}`;
   baseInfo.textContent = `和牌：${winnerNames}；${losePart}`;
   container.appendChild(baseInfo);
 
@@ -347,27 +347,6 @@ function parseOriginalScoreRoleClasses(
   return roles;
 }
 
-function getPlayerColumnIndexMap(table: HTMLTableElement): Map<string, number> {
-  const map = new Map<string, number>();
-  const nameCells = Array.from(
-    table.querySelectorAll('td[name="nm"]'),
-  ) as HTMLTableCellElement[];
-  nameCells.forEach((cell, index) => {
-    const name = (cell.textContent || "").trim();
-    if (name) {
-      map.set(name, index);
-    }
-  });
-  return map;
-}
-
-function getSeatIndexByName(
-  name: string,
-  playerColumnIndexMap: Map<string, number>,
-): number {
-  return playerColumnIndexMap.get(name.trim()) ?? -1;
-}
-
 function detectFoulSeat(
   scoreRoles: Array<"w" | "c" | "n" | "f" | "">,
 ): number | null {
@@ -379,7 +358,6 @@ function buildCompactScoreTexts(
   round: RoundOutcome,
   scores: number[],
   plusTenRule: boolean,
-  playerColumnIndexMap: Map<string, number>,
   scoreRoles: Array<"w" | "c" | "n" | "f" | "">,
 ): Array<{ text: string; foul: boolean }> {
   const result = [0, 1, 2, 3].map(() => ({ text: "", foul: false }));
@@ -395,14 +373,8 @@ function buildCompactScoreTexts(
     return result;
   }
 
-  const winnerSeat = getSeatIndexByName(
-    round.winners[0]?.playerName || "",
-    playerColumnIndexMap,
-  );
-  const discarderSeat = getSeatIndexByName(
-    round.discarderNames[0] || "",
-    playerColumnIndexMap,
-  );
+  const winnerSeat = round.winners[0]?.playerIndex ?? -1;
+  const discarderSeat = round.discarders[0]?.playerIndex ?? -1;
   const totalFan = round.winners[0]?.totalFan || 0;
   if (winnerSeat < 0 || totalFan <= 0) {
     return result;
@@ -504,10 +476,13 @@ function validateCompactScoreRound(
       : [0, 0, 0, 0];
 
   const scoreMismatch = expectedScores.some(
-    (value, index) => value !== actualScores[index],
+    (value, index) =>
+      compactScores[index].text.trim() && value !== actualScores[index],
   );
   const totalMismatch = expectedScores.some(
-    (value, index) => previousTotals[index] + value !== displayedTotals[index],
+    (value, index) =>
+      compactScores[index].text.trim() &&
+      previousTotals[index] + value !== displayedTotals[index],
   );
 
   if (scoreMismatch || totalMismatch) {
@@ -531,7 +506,6 @@ function applyScoreCompactMode(
   const baseScore = parseBaseScore();
   const plusTenRule = isPlusTenFoulRule();
   const roundMap = new Map<number, RoundOutcome>();
-  const playerColumnIndexMap = getPlayerColumnIndexMap(table);
   rounds.forEach((round) => roundMap.set(round.roundNo, round));
 
   getRoundRows(table).forEach((row, rowIndex) => {
@@ -556,12 +530,11 @@ function applyScoreCompactMode(
             roundMap.get(roundNo) || {
               roundNo,
               winners: [],
-              discarderNames: [],
+              discarders: [],
               selfDraw: false,
             },
             scores,
             plusTenRule,
-            playerColumnIndexMap,
             scoreRoles,
           )
         : scores.map((score) => ({ text: String(score), foul: false }));
@@ -1109,7 +1082,7 @@ function renderDetailMode(
       const roundInfo = roundMap.get(roundNo) || {
         roundNo,
         winners: [],
-        discarderNames: [],
+        discarders: [],
         selfDraw: false,
       };
       const detailRow = createRoundDetailRow(row, roundInfo);
