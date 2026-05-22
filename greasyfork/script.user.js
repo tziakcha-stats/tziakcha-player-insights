@@ -4,7 +4,7 @@
 // @name:en          Tziakcha Player Insights
 // @icon             https://cdn.jsdelivr.net/gh/Choimoe/chaga-reviewer-script/doc/img/icon.png
 // @namespace        https://greasyfork.org/users/1543716
-// @version          2.2.6
+// @version          2.2.7
 // @author           Choimoe <qwqshq@gmail.com>
 // @source           https://github.com/tziakcha-stats/tziakcha-player-insights
 // @license          MIT
@@ -3861,10 +3861,14 @@ function computeRoundOutcomes(sessionPlayerNames, steps, playerMetrics) {
             roundNo: round.roundNo,
             winners: round.winners.map((winner) => ({
                 playerName: winner.playerName,
+                playerIndex: winner.playerIndex,
                 totalFan: winner.totalFan,
                 fanItems: winner.fanItems,
             })),
-            discarderNames: round.discarders.map((discarder) => discarder.playerName),
+            discarders: round.discarders.map((discarder) => ({
+                playerName: discarder.playerName,
+                playerIndex: discarder.playerIndex,
+            })),
             selfDraw: round.selfDraw,
         };
     });
@@ -4088,7 +4092,7 @@ function appendRoundDetailContent(container, round) {
     const baseInfo = document.createElement("div");
     const losePart = round.selfDraw
         ? "自摸"
-        : `放铳：${round.discarderNames.join("、") || "未知"}`;
+        : `放铳：${round.discarders.map((d) => d.playerName).join("、") || "未知"}`;
     baseInfo.textContent = `和牌：${winnerNames}；${losePart}`;
     container.appendChild(baseInfo);
     round.winners.forEach((winner) => {
@@ -4206,25 +4210,11 @@ function parseOriginalScoreRoleClasses(row) {
     }
     return roles;
 }
-function getPlayerColumnIndexMap(table) {
-    const map = new Map();
-    const nameCells = Array.from(table.querySelectorAll('td[name="nm"]'));
-    nameCells.forEach((cell, index) => {
-        const name = (cell.textContent || "").trim();
-        if (name) {
-            map.set(name, index);
-        }
-    });
-    return map;
-}
-function getSeatIndexByName(name, playerColumnIndexMap) {
-    return playerColumnIndexMap.get(name.trim()) ?? -1;
-}
 function detectFoulSeat(scoreRoles) {
     const foundSeat = scoreRoles.findIndex((role) => role === "f");
     return foundSeat >= 0 ? foundSeat : null;
 }
-function buildCompactScoreTexts(round, scores, plusTenRule, playerColumnIndexMap, scoreRoles) {
+function buildCompactScoreTexts(round, scores, plusTenRule, scoreRoles) {
     const result = [0, 1, 2, 3].map(() => ({ text: "", foul: false }));
     const foulSeat = detectFoulSeat(scoreRoles);
     if (foulSeat !== null) {
@@ -4236,8 +4226,8 @@ function buildCompactScoreTexts(round, scores, plusTenRule, playerColumnIndexMap
     if (!round.winners.length) {
         return result;
     }
-    const winnerSeat = getSeatIndexByName(round.winners[0]?.playerName || "", playerColumnIndexMap);
-    const discarderSeat = getSeatIndexByName(round.discarderNames[0] || "", playerColumnIndexMap);
+    const winnerSeat = round.winners[0]?.playerIndex ?? -1;
+    const discarderSeat = round.discarders[0]?.playerIndex ?? -1;
     const totalFan = round.winners[0]?.totalFan || 0;
     if (winnerSeat < 0 || totalFan <= 0) {
         return result;
@@ -4316,8 +4306,9 @@ function validateCompactScoreRound(roundNo, row, compactScores, baseScore, plusT
     const previousTotals = previousRow?.getAttribute("name") === "rdtr"
         ? parseDisplayedTotals(previousRow)
         : [0, 0, 0, 0];
-    const scoreMismatch = expectedScores.some((value, index) => value !== actualScores[index]);
-    const totalMismatch = expectedScores.some((value, index) => previousTotals[index] + value !== displayedTotals[index]);
+    const scoreMismatch = expectedScores.some((value, index) => compactScores[index].text.trim() && value !== actualScores[index]);
+    const totalMismatch = expectedScores.some((value, index) => compactScores[index].text.trim() &&
+        previousTotals[index] + value !== displayedTotals[index]);
     if (scoreMismatch || totalMismatch) {
         warnLog("简洁得分校验失败", {
             roundNo,
@@ -4334,7 +4325,6 @@ function applyScoreCompactMode(table, rounds, mode) {
     const baseScore = parseBaseScore();
     const plusTenRule = isPlusTenFoulRule();
     const roundMap = new Map();
-    const playerColumnIndexMap = getPlayerColumnIndexMap(table);
     rounds.forEach((round) => roundMap.set(round.roundNo, round));
     getRoundRows(table).forEach((row, rowIndex) => {
         if (row.children.length < 9) {
@@ -4354,9 +4344,9 @@ function applyScoreCompactMode(table, rounds, mode) {
             ? buildCompactScoreTexts(roundMap.get(roundNo) || {
                 roundNo,
                 winners: [],
-                discarderNames: [],
+                discarders: [],
                 selfDraw: false,
-            }, scores, plusTenRule, playerColumnIndexMap, scoreRoles)
+            }, scores, plusTenRule, scoreRoles)
             : scores.map((score) => ({ text: String(score), foul: false }));
         if (mode === "compact") {
             validateCompactScoreRound(roundNo, row, displayed, baseScore, plusTenRule);
@@ -4773,7 +4763,7 @@ function renderDetailMode(table, rounds, retryCount) {
             const roundInfo = roundMap.get(roundNo) || {
                 roundNo,
                 winners: [],
-                discarderNames: [],
+                discarders: [],
                 selfDraw: false,
             };
             const detailRow = createRoundDetailRow(row, roundInfo);
