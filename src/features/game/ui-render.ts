@@ -347,11 +347,13 @@ function parseOriginalScoreRoleClasses(
   return roles;
 }
 
-function detectFoulSeat(
+export function detectFoulSeat(
   scoreRoles: Array<"w" | "c" | "n" | "f" | "">,
-): number | null {
-  const foundSeat = scoreRoles.findIndex((role) => role === "f");
-  return foundSeat >= 0 ? foundSeat : null;
+): number[] {
+  return scoreRoles.reduce<number[]>((seats, role, index) => {
+    if (role === "f") seats.push(index);
+    return seats;
+  }, []);
 }
 
 function buildCompactScoreTexts(
@@ -361,13 +363,13 @@ function buildCompactScoreTexts(
   scoreRoles: Array<"w" | "c" | "n" | "f" | "">,
 ): Array<{ text: string; foul: boolean }> {
   const result = [0, 1, 2, 3].map(() => ({ text: "", foul: false }));
-  const foulSeat = detectFoulSeat(scoreRoles);
-  if (foulSeat !== null) {
+  const foulSeats = detectFoulSeat(scoreRoles);
+  foulSeats.forEach((foulSeat) => {
     result[foulSeat] = {
-      text: plusTenRule ? "-10×3" : "-40",
+      text: plusTenRule ? "-30" : "-40",
       foul: true,
     };
-  }
+  });
 
   if (!round.winners.length) {
     return result;
@@ -382,11 +384,10 @@ function buildCompactScoreTexts(
 
   if (round.selfDraw) {
     result[winnerSeat] = {
-      text:
-        foulSeat === winnerSeat
-          ? `${result[winnerSeat].text}${totalFan}×3`
-          : `${totalFan}×3`,
-      foul: foulSeat === winnerSeat,
+      text: foulSeats.includes(winnerSeat)
+        ? `${result[winnerSeat].text}${totalFan}×3`
+        : `${totalFan}×3`,
+      foul: foulSeats.includes(winnerSeat),
     };
     return result;
   }
@@ -394,7 +395,7 @@ function buildCompactScoreTexts(
   result[winnerSeat] = { text: String(totalFan), foul: false };
 
   if (discarderSeat >= 0) {
-    if (discarderSeat === foulSeat) {
+    if (foulSeats.includes(discarderSeat)) {
       result[discarderSeat] = {
         text: `${result[discarderSeat].text}-${totalFan}`,
         foul: true,
@@ -410,7 +411,7 @@ function buildCompactScoreTexts(
   return result;
 }
 
-function expandCompactScoresToActualScores(
+export function expandCompactScoresToActualScores(
   compactScores: Array<{ text: string; foul: boolean }>,
   baseScore: number,
   plusTenRule: boolean,
@@ -421,16 +422,13 @@ function expandCompactScoresToActualScores(
       return 0;
     }
     if (text.includes("×3")) {
-      if (text === "-10×3") {
-        return plusTenRule ? -30 : -40;
-      }
       const value = Number(text.replace("×3", ""));
       if (Number.isFinite(value)) {
         return value * 3 + baseScore * 3;
       }
     }
-    if (text.startsWith("-10×3-")) {
-      const value = Number(text.replace("-10×3-", ""));
+    if (text.startsWith("-30-")) {
+      const value = Number(text.replace("-30-", ""));
       if (Number.isFinite(value)) {
         return -30 - value;
       }
@@ -440,6 +438,12 @@ function expandCompactScoresToActualScores(
       if (Number.isFinite(value)) {
         return -40 - value;
       }
+    }
+    if (text === "-30") {
+      return -30;
+    }
+    if (text === "-40") {
+      return -40;
     }
     const value = Number(text);
     if (!Number.isFinite(value)) {

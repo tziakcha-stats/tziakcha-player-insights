@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  detectFoulSeat,
+  expandCompactScoresToActualScores,
   installRoundToggleButtons,
   installRoundWinDisplayModes,
   upsertLoadingRows,
@@ -1148,17 +1150,17 @@ describe("game ui render", () => {
 
     expect(row3[1]?.textContent).toBe("");
     expect(row3[3]?.textContent).toBe("");
-    expect(row3[5]?.textContent).toBe("-10×3");
+    expect(row3[5]?.textContent).toBe("-30");
     expect(row3[7]?.textContent).toBe("");
     expect(row3[5]?.className).toContain("f");
 
-    expect(row4[1]?.textContent).toBe("-10×3");
+    expect(row4[1]?.textContent).toBe("-30");
     expect(row4[3]?.textContent).toBe("-12");
     expect(row4[5]?.textContent).toBe("");
     expect(row4[7]?.textContent).toBe("12");
     expect(row4[1]?.className).toContain("f");
 
-    expect(row5[1]?.textContent).toBe("-10×3-12");
+    expect(row5[1]?.textContent).toBe("-30-12");
     expect(row5[3]?.textContent).toBe("");
     expect(row5[5]?.textContent).toBe("");
     expect(row5[7]?.textContent).toBe("12");
@@ -1347,5 +1349,95 @@ describe("game ui render", () => {
     expect(row[5]?.className).toContain("w");
     expect(row[7]?.className).toContain("c");
     expect(row[7]?.className).not.toContain("f");
+  });
+
+  it("detects multiple foul seats", () => {
+    const scoreRoles: Array<"w" | "c" | "n" | "f" | ""> = ["w", "f", "n", "f"];
+    const result = detectFoulSeat(scoreRoles);
+    expect(result).toEqual([1, 3]);
+  });
+
+  it("handles multiple foul seats in compact score display", () => {
+    setupScoreRoundTable();
+
+    installRoundWinDisplayModes([
+      {
+        roundNo: 1,
+        winners: [],
+        discarders: [],
+        selfDraw: false,
+      },
+      {
+        roundNo: 2,
+        winners: [],
+        discarders: [],
+        selfDraw: false,
+      },
+      {
+        roundNo: 3,
+        winners: [],
+        discarders: [],
+        selfDraw: false,
+      },
+      {
+        roundNo: 4,
+        winners: [
+          {
+            playerName: "D",
+            playerIndex: 3,
+            totalFan: 12,
+            fanItems: [],
+          },
+        ],
+        discarders: [{ playerName: "B", playerIndex: 1 }],
+        selfDraw: false,
+      },
+      {
+        roundNo: 5,
+        winners: [
+          {
+            playerName: "D",
+            playerIndex: 3,
+            totalFan: 12,
+            fanItems: [],
+          },
+        ],
+        discarders: [{ playerName: "A", playerIndex: 0 }],
+        selfDraw: false,
+      },
+    ]);
+
+    const toggle = document.querySelector(
+      "button[data-score-compact-mode]",
+    ) as HTMLButtonElement | null;
+    toggle?.click();
+
+    const row3 = document.querySelectorAll("#round-row-3 td");
+    const row4 = document.querySelectorAll("#round-row-4 td");
+    const row5 = document.querySelectorAll("#round-row-5 td");
+
+    // 验证多个错和座位都显示错和标志
+    expect(row3[5]?.textContent).toBe("-30");
+    expect(row3[5]?.className).toContain("f");
+
+    expect(row4[1]?.textContent).toBe("-30");
+    expect(row4[1]?.className).toContain("f");
+
+    expect(row5[1]?.textContent).toBe("-30-12");
+    expect(row5[1]?.className).toContain("f");
+  });
+
+  describe("expandCompactScoresToActualScores", () => {
+    it("expands compact scores with new foul format", () => {
+      const compactScores = [
+        { text: "-30", foul: true },
+        { text: "", foul: false },
+        { text: "12", foul: false },
+        { text: "-12", foul: false },
+      ];
+
+      const result = expandCompactScoresToActualScores(compactScores, 8, true);
+      expect(result).toEqual([-30, 0, 12 + 8 * 3, -12 - 8]);
+    });
   });
 });
