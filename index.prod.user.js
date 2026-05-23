@@ -4,7 +4,7 @@
 // @name:en          Tziakcha Player Insights
 // @icon             https://cdn.jsdelivr.net/gh/Choimoe/chaga-reviewer-script/doc/img/icon.png
 // @namespace        https://greasyfork.org/users/1543716
-// @version          2.2.8
+// @version          2.2.9
 // @author           Choimoe <qwqshq@gmail.com>
 // @source           https://github.com/tziakcha-stats/tziakcha-player-insights
 // @license          MIT
@@ -4211,18 +4211,21 @@ function parseOriginalScoreRoleClasses(row) {
     return roles;
 }
 function detectFoulSeat(scoreRoles) {
-    const foundSeat = scoreRoles.findIndex((role) => role === "f");
-    return foundSeat >= 0 ? foundSeat : null;
+    return scoreRoles.reduce((seats, role, index) => {
+        if (role === "f")
+            seats.push(index);
+        return seats;
+    }, []);
 }
 function buildCompactScoreTexts(round, scores, plusTenRule, scoreRoles) {
     const result = [0, 1, 2, 3].map(() => ({ text: "", foul: false }));
-    const foulSeat = detectFoulSeat(scoreRoles);
-    if (foulSeat !== null) {
+    const foulSeats = detectFoulSeat(scoreRoles);
+    foulSeats.forEach((foulSeat) => {
         result[foulSeat] = {
-            text: plusTenRule ? "-10×3" : "-40",
+            text: plusTenRule ? "-30" : "-40",
             foul: true,
         };
-    }
+    });
     if (!round.winners.length) {
         return result;
     }
@@ -4234,16 +4237,16 @@ function buildCompactScoreTexts(round, scores, plusTenRule, scoreRoles) {
     }
     if (round.selfDraw) {
         result[winnerSeat] = {
-            text: foulSeat === winnerSeat
+            text: foulSeats.includes(winnerSeat)
                 ? `${result[winnerSeat].text}${totalFan}×3`
                 : `${totalFan}×3`,
-            foul: foulSeat === winnerSeat,
+            foul: foulSeats.includes(winnerSeat),
         };
         return result;
     }
     result[winnerSeat] = { text: String(totalFan), foul: false };
     if (discarderSeat >= 0) {
-        if (discarderSeat === foulSeat) {
+        if (foulSeats.includes(discarderSeat)) {
             result[discarderSeat] = {
                 text: `${result[discarderSeat].text}-${totalFan}`,
                 foul: true,
@@ -4265,16 +4268,13 @@ function expandCompactScoresToActualScores(compactScores, baseScore, plusTenRule
             return 0;
         }
         if (text.includes("×3")) {
-            if (text === "-10×3") {
-                return plusTenRule ? -30 : -40;
-            }
             const value = Number(text.replace("×3", ""));
             if (Number.isFinite(value)) {
                 return value * 3 + baseScore * 3;
             }
         }
-        if (text.startsWith("-10×3-")) {
-            const value = Number(text.replace("-10×3-", ""));
+        if (text.startsWith("-30-")) {
+            const value = Number(text.replace("-30-", ""));
             if (Number.isFinite(value)) {
                 return -30 - value;
             }
@@ -4284,6 +4284,12 @@ function expandCompactScoresToActualScores(compactScores, baseScore, plusTenRule
             if (Number.isFinite(value)) {
                 return -40 - value;
             }
+        }
+        if (text === "-30") {
+            return -30;
+        }
+        if (text === "-40") {
+            return -40;
         }
         const value = Number(text);
         if (!Number.isFinite(value)) {
