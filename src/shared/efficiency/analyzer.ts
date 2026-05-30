@@ -1,7 +1,10 @@
+// @ts-expect-error 无类型声明
+import { Shanten } from "gb-mahjong-js/lib/solver/shanten";
+// @ts-expect-error 无类型声明
+import Handtiles from "gb-mahjong-js/lib/core/handtiles";
 import { analyzeHandDetailed } from "gb-mahjong-js/efficiency";
 import { warnLog } from "../logger";
 import type {
-  AnalysisMode,
   EfficiencyResult,
   AnalysisOptions,
   Summary,
@@ -50,6 +53,24 @@ function tilesToHandString(handTiles: number[]): string {
   return handStr;
 }
 
+function quickShanten(handStr: string): number {
+  try {
+    const ht = new Handtiles();
+    const code = ht.StringToHandtiles(handStr);
+    if (code !== 0) return Infinity;
+    const result = Shanten.calcAll(ht);
+    return Math.min(
+      result.normal ?? Infinity,
+      result.qidui ?? Infinity,
+      result.shisanyao ?? Infinity,
+      result.quanbukao ?? Infinity,
+      result.zuhelong ?? Infinity,
+    );
+  } catch {
+    return Infinity;
+  }
+}
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function mapSummary(summary: any): Summary | undefined {
   if (!summary) return undefined;
@@ -74,20 +95,13 @@ function mapSummary(summary: any): Summary | undefined {
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-export function determineAnalysisMode(handTiles: number[]): AnalysisMode {
-  if (handTiles.length !== 13) {
-    return "quick";
-  }
-
-  const handStr = tilesToHandString(handTiles);
-
-  try {
-    const result = analyzeHandDetailed(handStr, { compact: true, fast: true });
-    return result.shanten <= 2 ? "full" : "quick";
-  } catch {
-    return "quick";
-  }
-}
+const EMPTY_RESULT: EfficiencyResult = {
+  shanten: 0,
+  isHu: false,
+  tileCount: 0,
+  hand: "",
+  elapsedMs: 0,
+};
 
 export function analyzeHand(
   handTiles: number[],
@@ -96,6 +110,21 @@ export function analyzeHand(
   const startTime = Date.now();
   const handStr = tilesToHandString(handTiles);
 
+  // 第一步：快速计算向听数（~30ms）
+  const shanten = quickShanten(handStr);
+
+  // 向听 > 2：只返回向听信息，跳过效率计算
+  if (shanten > 2) {
+    return {
+      ...EMPTY_RESULT,
+      shanten,
+      tileCount: handTiles.length,
+      hand: handStr,
+      elapsedMs: Date.now() - startTime,
+    };
+  }
+
+  // 第二步：向听 <= 2，执行完整效率分析
   try {
     const result = analyzeHandDetailed(handStr, {
       fast: true,
@@ -128,7 +157,7 @@ export function analyzeHand(
   } catch (error) {
     warnLog("[Efficiency] analyzeHand 失败:", error);
     return {
-      shanten: 0,
+      shanten,
       isHu: false,
       tileCount: handTiles.length,
       hand: handStr,

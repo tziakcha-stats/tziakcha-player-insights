@@ -7,7 +7,7 @@ export {
   AnalysisMode,
 } from "./types";
 
-export { analyzeHand, determineAnalysisMode } from "./analyzer";
+export { analyzeHand } from "./analyzer";
 
 export {
   formatEfficiencyResult,
