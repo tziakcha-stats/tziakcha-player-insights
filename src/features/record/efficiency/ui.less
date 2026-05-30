@@ -6,8 +6,6 @@
   font-family: monospace;
   font-size: 12px;
   color: #fff;
-  max-height: 200px;
-  overflow-y: auto;
 
   .efficiency-header {
     font-weight: bold;
@@ -18,15 +16,32 @@
     justify-content: space-between;
     align-items: center;
 
-    .efficiency-mode {
-      font-size: 10px;
-      opacity: 0.7;
+    .efficiency-controls {
+      display: flex;
+      gap: 4px;
+    }
+
+    .efficiency-btn {
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      cursor: pointer;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-family: inherit;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
     }
   }
 
   .efficiency-content {
     white-space: pre-wrap;
     line-height: 1.4;
+    max-height: 300px;
+    overflow-y: auto;
   }
 
   .efficiency-loading {

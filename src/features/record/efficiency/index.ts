@@ -2,16 +2,22 @@ import { infoLog, warnLog } from "../../../shared/logger";
 import { analyzeHand } from "../../../shared/efficiency";
 import {
   getCurrentHandTiles,
-  handTilesToStr,
   getLastStep,
   setLastStep,
   getLastHandStr,
   setLastHandStr,
-  getLastResult,
   setLastResult,
   resetState,
 } from "./state";
-import { mountEfficiencyPanel, showError, renderAnalysis } from "./ui";
+import {
+  mountEfficiencyPanel,
+  getMode,
+  setMode,
+  onAnalyzeClick,
+  showLoading,
+  showError,
+  renderAnalysis,
+} from "./ui";
 import { getTZInstance } from "../reviewer/state";
 
 const POLL_INTERVAL_MS = 200;
@@ -20,6 +26,28 @@ const INIT_DELAY_MS = 100;
 let isInitialized = false;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let initTimer: ReturnType<typeof setTimeout> | null = null;
+
+function doAnalysis(): void {
+  const handTiles = getCurrentHandTiles();
+  if (!handTiles || handTiles.length < 13) {
+    return;
+  }
+
+  try {
+    infoLog(`[Efficiency] 分析手牌 ${handTiles.length} 张`);
+    showLoading();
+
+    const result = analyzeHand(handTiles);
+
+    renderAnalysis(result);
+    setLastResult(result);
+
+    infoLog(`[Efficiency] 完成，耗时 ${result.elapsedMs}ms`);
+  } catch (error) {
+    warnLog("[Efficiency] 分析失败:", error);
+    showError("分析失败");
+  }
+}
 
 function performAnalysis(): void {
   const tz = getTZInstance();
@@ -35,33 +63,24 @@ function performAnalysis(): void {
   }
   setLastStep(step);
 
-  // 读取 player 0 的手牌
+  // 读取手牌
   const handTiles = getCurrentHandTiles();
   if (!handTiles || handTiles.length < 13) {
     return;
   }
 
-  // 手牌没变（不是 player 0 的摸牌/打牌/副露），跳过
-  const handStr = handTilesToStr(handTiles);
+  // 手牌没变，跳过
+  const handStr = handTiles
+    .slice()
+    .sort((a, b) => a - b)
+    .join(",");
   if (handStr === getLastHandStr()) {
     return;
   }
   setLastHandStr(handStr);
 
   // 手牌变了，执行分析
-  try {
-    infoLog(`[Efficiency] 步骤 ${step}，手牌 ${handTiles.length} 张`);
-
-    const result = analyzeHand(handTiles);
-
-    renderAnalysis(result);
-    setLastResult(result);
-
-    infoLog(`[Efficiency] 完成，耗时 ${result.elapsedMs}ms`);
-  } catch (error) {
-    warnLog("[Efficiency] 分析失败:", error);
-    showError("分析失败");
-  }
+  doAnalysis();
 }
 
 function startPolling(): void {
@@ -69,7 +88,9 @@ function startPolling(): void {
 
   pollTimer = setInterval(() => {
     try {
-      performAnalysis();
+      if (getMode() === "auto") {
+        performAnalysis();
+      }
     } catch (error) {
       warnLog("[Efficiency] 轮询出错:", error);
     }
@@ -99,8 +120,21 @@ export function initEfficiencyAnalysis(): void {
     return;
   }
 
-  mountEfficiencyPanel();
-  infoLog("[Efficiency] UI 面板已挂载");
+  const panel = mountEfficiencyPanel();
+  if (!panel) return;
+
+  // 手动分析按钮
+  onAnalyzeClick(() => {
+    doAnalysis();
+  });
+
+  // 模式切换按钮
+  const modeBtn = document.getElementById("efficiency-mode-btn");
+  modeBtn?.addEventListener("click", () => {
+    const next = getMode() === "manual" ? "auto" : "manual";
+    setMode(next);
+    infoLog(`[Efficiency] 模式切换为: ${next}`);
+  });
 
   startPolling();
 
