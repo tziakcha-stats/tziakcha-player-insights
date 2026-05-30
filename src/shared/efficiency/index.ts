@@ -7,15 +7,12 @@ export {
   AnalysisMode,
 } from "./types";
 
-export {
-  analyzeHand,
-  analyzeHandQuick,
-  determineAnalysisMode,
-} from "./analyzer";
+export { analyzeHand, determineAnalysisMode } from "./analyzer";
 
 export {
   formatEfficiencyResult,
   formatQuickResult,
+  formatDiscards,
   formatShanten,
   formatAcceptance,
   formatEfficiency,

@@ -1,8 +1,5 @@
 import { EfficiencyResult } from "../../../shared/efficiency";
-import {
-  formatEfficiencyResult,
-  formatQuickResult,
-} from "../../../shared/efficiency";
+import { formatEfficiencyResult } from "../../../shared/efficiency";
 import "./ui.less";
 
 export function createEfficiencyPanel(): HTMLElement {
@@ -70,29 +67,10 @@ export function showError(message: string): void {
   }
 }
 
-export function renderFullAnalysis(result: EfficiencyResult): void {
+export function renderAnalysis(result: EfficiencyResult): void {
   const content = document.getElementById("efficiency-content");
-  const modeLabel = document.getElementById("efficiency-mode");
-
   if (content) {
     content.textContent = formatEfficiencyResult(result);
-  }
-
-  if (modeLabel) {
-    modeLabel.textContent = "全量";
-  }
-}
-
-export function renderQuickAnalysis(result: EfficiencyResult): void {
-  const content = document.getElementById("efficiency-content");
-  const modeLabel = document.getElementById("efficiency-mode");
-
-  if (content) {
-    content.textContent = formatQuickResult(result);
-  }
-
-  if (modeLabel) {
-    modeLabel.textContent = "简略";
   }
 }
 
@@ -100,10 +78,5 @@ export function clearAnalysis(): void {
   const content = document.getElementById("efficiency-content");
   if (content) {
     content.textContent = "";
-  }
-
-  const modeLabel = document.getElementById("efficiency-mode");
-  if (modeLabel) {
-    modeLabel.textContent = "";
   }
 }

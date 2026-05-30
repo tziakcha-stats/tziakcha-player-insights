@@ -1,7 +1,4 @@
-import {
-  analyzeHandDetailed,
-  analyzeEfficiency,
-} from "gb-mahjong-js/efficiency";
+import { analyzeHandDetailed } from "gb-mahjong-js/efficiency";
 import { warnLog } from "../logger";
 import type {
   AnalysisMode,
@@ -66,6 +63,7 @@ function mapSummary(summary: any): Summary | undefined {
   return {
     shanten: summary.shanten,
     isTenpai: summary.shanten === 0,
+    waits: summary.waits,
     acceptanceCount: summary.acceptanceCount,
     acceptanceTileCount: summary.acceptanceTileCount,
     efficiency: summary.efficiency,
@@ -96,13 +94,11 @@ export function analyzeHand(
   options: AnalysisOptions = {},
 ): EfficiencyResult {
   const startTime = Date.now();
-  // 14 张手牌时去掉最后一张，避免枚举所有打牌选择导致超时
-  const tiles = handTiles.length === 14 ? handTiles.slice(0, 13) : handTiles;
-  const handStr = tilesToHandString(tiles);
+  const handStr = tilesToHandString(handTiles);
 
   try {
     const result = analyzeHandDetailed(handStr, {
-      fast: false,
+      fast: true,
       ...options,
     });
 
@@ -130,35 +126,11 @@ export function analyzeHand(
       elapsedMs: Date.now() - startTime,
     };
   } catch (error) {
-    warnLog("[Efficiency] analyzeHand 失败，降级为快速分析:", error);
-    return analyzeHandQuick(handTiles);
-  }
-}
-
-export function analyzeHandQuick(handTiles: number[]): EfficiencyResult {
-  const startTime = Date.now();
-
-  // 14 张手牌时去掉最后一张，避免 analyzeEfficiency 枚举所有打牌选择导致超时
-  const tiles = handTiles.length === 14 ? handTiles.slice(0, 13) : handTiles;
-  const handStr = tilesToHandString(tiles);
-
-  try {
-    const result = analyzeEfficiency(handStr, { fast: true });
-
-    return {
-      shanten: result.shanten,
-      isHu: result.isHu,
-      tileCount: tiles.length,
-      hand: result.hand,
-      summary: mapSummary(result.summary),
-      elapsedMs: Date.now() - startTime,
-    };
-  } catch (error) {
-    warnLog("[Efficiency] analyzeHandQuick 失败:", error);
+    warnLog("[Efficiency] analyzeHand 失败:", error);
     return {
       shanten: 0,
       isHu: false,
-      tileCount: tiles.length,
+      tileCount: handTiles.length,
       hand: handStr,
       elapsedMs: Date.now() - startTime,
     };

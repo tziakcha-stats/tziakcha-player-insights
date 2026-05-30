@@ -1,7 +1,7 @@
-import type { EfficiencyResult, Summary, Draw } from "./types";
+import type { EfficiencyResult, Summary, Discard, Draw } from "./types";
 
 /**
- * Format shanten number to human readable string
+ * 向听数转文字
  */
 export function formatShanten(shanten: number): string {
   if (shanten === -1) return "和了";
@@ -10,7 +10,7 @@ export function formatShanten(shanten: number): string {
 }
 
 /**
- * Format acceptance (进张) information
+ * 格式化进张信息（13 张手牌）
  */
 export function formatAcceptance(acceptance: Draw[]): string {
   if (!acceptance || acceptance.length === 0) {
@@ -26,7 +26,44 @@ export function formatAcceptance(acceptance: Draw[]): string {
 }
 
 /**
- * Format efficiency result for display
+ * 格式化打牌推荐（14 张手牌）
+ */
+export function formatDiscards(discards: Discard[]): string {
+  if (!discards || discards.length === 0) {
+    return "无推荐";
+  }
+
+  const best = discards[0];
+  const lines = [`推荐打 ${tileIdToString(best.discardTileId)}`];
+
+  if (best.summary) {
+    const s = best.summary;
+    const parts: string[] = [];
+    parts.push(`向听: ${formatShanten(s.shanten)}`);
+    if (s.efficiency > 0) parts.push(`效率: ${s.efficiency.toFixed(2)}`);
+    if (typeof s.expectedFan === "number")
+      parts.push(`期望番: ${s.expectedFan.toFixed(1)}`);
+    if (s.mainFans && s.mainFans.length > 0)
+      parts.push(`番型: ${s.mainFans.join("、")}`);
+    lines.push(parts.join(" | "));
+  }
+
+  if (discards.length > 1) {
+    const alts = discards
+      .slice(1, 4)
+      .map(
+        (d) =>
+          `${tileIdToString(d.discardTileId)}(${d.summary?.efficiency?.toFixed(1) ?? "?"})`,
+      )
+      .join(" ");
+    lines.push(`备选: ${alts}`);
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * 格式化完整分析结果
  */
 export function formatEfficiencyResult(result: EfficiencyResult): string {
   const lines: string[] = [];
@@ -34,6 +71,12 @@ export function formatEfficiencyResult(result: EfficiencyResult): string {
   lines.push(`手牌: ${result.hand}`);
   lines.push(`向听: ${formatShanten(result.shanten)}`);
 
+  // 14 张：显示打牌推荐
+  if (result.discards && result.discards.length > 0) {
+    lines.push(formatDiscards(result.discards));
+  }
+
+  // 13 张：显示进张信息
   if (result.summary) {
     lines.push(formatSummary(result.summary));
   }
@@ -46,7 +89,7 @@ export function formatEfficiencyResult(result: EfficiencyResult): string {
 }
 
 /**
- * Format quick analysis result
+ * 格式化快速分析结果
  */
 export function formatQuickResult(result: EfficiencyResult): string {
   const lines: string[] = [];
@@ -62,69 +105,48 @@ export function formatQuickResult(result: EfficiencyResult): string {
 }
 
 /**
- * Format summary information
+ * 格式化摘要信息
  */
 function formatSummary(summary: Summary): string {
   const parts: string[] = [];
 
-  if (summary.isTenpai) {
-    parts.push("听牌");
-    if (summary.waits && summary.waits.length > 0) {
-      const waitNames = summary.waits.map(tileIdToString).join(" ");
-      parts.push(`等待: ${waitNames}`);
-    }
-  }
-
-  if (summary.acceptanceCount !== undefined) {
+  if (summary.acceptanceCount > 0) {
     parts.push(`进张种: ${summary.acceptanceCount}`);
   }
 
-  if (summary.acceptanceTileCount !== undefined) {
+  if (summary.acceptanceTileCount > 0) {
     parts.push(`进张数: ${summary.acceptanceTileCount}`);
   }
 
-  if (summary.efficiency !== undefined) {
+  if (summary.efficiency > 0) {
     parts.push(`效率: ${summary.efficiency.toFixed(2)}`);
   }
 
-  if (summary.expectedFan !== undefined) {
-    parts.push(`期望番数: ${summary.expectedFan.toFixed(2)}`);
-  }
-
-  if (summary.avgFan !== undefined) {
-    parts.push(`平均番数: ${summary.avgFan.toFixed(2)}`);
+  if (typeof summary.expectedFan === "number") {
+    parts.push(`期望番: ${summary.expectedFan.toFixed(1)}`);
   }
 
   if (summary.mainFans && summary.mainFans.length > 0) {
-    parts.push(`主要番型: ${summary.mainFans.join("、")}`);
+    parts.push(`番型: ${summary.mainFans.join("、")}`);
   }
 
   return parts.join(" | ");
 }
 
-/**
- * Format efficiency value
- */
 export function formatEfficiency(efficiency: number): string {
   return efficiency.toFixed(2);
 }
 
-/**
- * Format expected fan value
- */
 export function formatExpectedFan(expectedFan: number): string {
   return expectedFan.toFixed(2);
 }
 
-/**
- * Format main fans list
- */
 export function formatMainFans(mainFans: string[]): string {
   return mainFans.join("、");
 }
 
 /**
- * Convert tile ID to string representation
+ * 牌 ID 转字符串
  */
 function tileIdToString(tileId: number): string {
   const suits = ["m", "p", "s", "z"];

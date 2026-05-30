@@ -1,10 +1,5 @@
 import { infoLog, warnLog } from "../../../shared/logger";
-import {
-  analyzeHand,
-  analyzeHandQuick,
-  determineAnalysisMode,
-  EfficiencyResult,
-} from "../../../shared/efficiency";
+import { analyzeHand, EfficiencyResult } from "../../../shared/efficiency";
 import {
   getCurrentHandTiles,
   getLastAnalyzedStep,
@@ -16,8 +11,7 @@ import {
   mountEfficiencyPanel,
   showLoading,
   showError,
-  renderFullAnalysis,
-  renderQuickAnalysis,
+  renderAnalysis,
   clearAnalysis,
 } from "./ui";
 import { getTZInstance } from "../reviewer/state";
@@ -50,26 +44,13 @@ function performAnalysis(): void {
     return;
   }
 
-  const mode = determineAnalysisMode(handTiles);
-
   try {
-    let result: EfficiencyResult;
+    infoLog(`[Efficiency] 分析步骤 ${step}，手牌 ${handTiles.length} 张`);
+    showLoading();
 
-    if (mode === "full") {
-      infoLog(
-        `[Efficiency] 执行全量分析，步骤 ${step}，手牌 ${handTiles.length} 张`,
-      );
-      showLoading();
-      result = analyzeHand(handTiles);
-      renderFullAnalysis(result);
-    } else {
-      infoLog(
-        `[Efficiency] 执行快速分析，步骤 ${step}，手牌 ${handTiles.length} 张`,
-      );
-      result = analyzeHandQuick(handTiles);
-      renderQuickAnalysis(result);
-    }
+    const result: EfficiencyResult = analyzeHand(handTiles);
 
+    renderAnalysis(result);
     setLastAnalyzedStep(step);
     setAnalysisResult(result);
 
