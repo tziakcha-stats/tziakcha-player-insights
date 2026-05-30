@@ -25,12 +25,14 @@ function quickShanten(handStr: string): number {
 
 /**
  * 分析手牌，返回 gb-mahjong-js 原始结果
- * @param handStr 手牌字符串（可能包含副露前缀如 [123m,1]）
+ * @param handStr 手牌字符串（可能包含副露前缀如 [999m,1]）
  * @param tileCount 手牌总张数（含副露）
+ * @param closedTileIds 闭门手牌的 tileId 数组，用于过滤无效打牌推荐
  */
 export function analyzeHand(
   handStr: string,
   tileCount: number,
+  closedTileIds: number[] = [],
 ): Record<string, unknown> {
   const startTime = Date.now();
 
@@ -50,6 +52,15 @@ export function analyzeHand(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = analyzeHandDetailed(handStr, { fast: true }) as any;
     result.elapsedMs = Date.now() - startTime;
+
+    // 过滤掉不在闭门手牌中的打牌推荐（gb-mahjong-js 副露分析 bug）
+    if (result.discards && closedTileIds.length > 0) {
+      const closedSet = new Set(closedTileIds);
+      result.discards = result.discards.filter((d: { discardTileId: number }) =>
+        closedSet.has(d.discardTileId),
+      );
+    }
+
     return result;
   } catch (error) {
     warnLog("[Efficiency] analyzeHand 失败:", error);
