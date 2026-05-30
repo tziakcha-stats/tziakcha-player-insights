@@ -100,6 +100,10 @@ function parseTileIdFromClass(className: string): number | null {
 /**
  * 从 HTML 字符串中解析所有牌（闭门 + 副露）
  * stat[].hd 是 hd_hs 函数生成的 HTML，包含所有 .tl 元素
+ *
+ * 关键区分：
+ * - 闭门牌：有 data-val 属性
+ * - 副露牌：无 data-val 属性（hd_hs 不给副露牌加 data-val）
  */
 function parseHandHtml(html: string): {
   closed: number[];
@@ -116,9 +120,15 @@ function parseHandHtml(html: string): {
   while ((match = regex.exec(html)) !== null) {
     const tag = match[0];
 
-    // 从 data-val 属性读取（闭门牌）
+    // 有 data-val → 闭门牌
     const valMatch = tag.match(/data-val="(\d+)"/);
     if (valMatch) {
+      // 先保存未完成的副露组
+      if (currentMeld.length > 0) {
+        melds.push(currentMeld);
+        currentMeld = [];
+      }
+
       const rawVal = parseInt(valMatch[1], 10);
       if (rawVal < FLOWER_TILE_VAL_MIN) {
         closed.push(Math.floor(rawVal / 4));
@@ -126,24 +136,10 @@ function parseHandHtml(html: string): {
       continue;
     }
 
-    // 从 CSS 类名读取（副露牌，没有 data-val）
+    // 无 data-val → 副露牌，从 CSS 类名解析
     const tileId = parseTileIdFromClass(tag);
     if (tileId === null) continue;
-
-    // 判断是否为副露牌（rot270/rot90 且非 dd 类）
-    const isMeldTile = /rot(270|90)/.test(tag) && !/rot0/.test(tag);
-    const isRotatedTop = /top:\s*-8px/.test(tag); // 叠放的第四张牌
-
-    if (isMeldTile || isRotatedTop) {
-      currentMeld.push(tileId);
-    } else {
-      // 如果有未完成的副露组，先保存
-      if (currentMeld.length > 0) {
-        melds.push(currentMeld);
-        currentMeld = [];
-      }
-      closed.push(tileId);
-    }
+    currentMeld.push(tileId);
   }
 
   // 保存最后一个副露组
