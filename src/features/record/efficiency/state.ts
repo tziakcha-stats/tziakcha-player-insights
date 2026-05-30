@@ -112,8 +112,8 @@ function parseHandHtml(html: string): {
   const closed: number[] = [];
   const melds: number[][] = [];
   let currentMeld: number[] = [];
+  let prevWasRot0 = false; // 上一张牌是 rot0（闭门牌或副露组内的牌）
 
-  // 匹配所有 .tl 元素
   const regex = /<div[^>]*class="[^"]*\btl\b[^"]*"[^>]*>/g;
   let match;
 
@@ -123,39 +123,46 @@ function parseHandHtml(html: string): {
     // 有 data-val → 闭门牌
     const valMatch = tag.match(/data-val="(\d+)"/);
     if (valMatch) {
-      // 先保存未完成的副露组
       if (currentMeld.length > 0) {
         melds.push(currentMeld);
         currentMeld = [];
       }
-
       const rawVal = parseInt(valMatch[1], 10);
       if (rawVal < FLOWER_TILE_VAL_MIN) {
         closed.push(Math.floor(rawVal / 4));
       }
+      prevWasRot0 = true;
       continue;
     }
 
-    // 无 data-val → 副露牌，从 CSS 类名解析
+    // 无 data-val → 副露牌
     const tileId = parseTileIdFromClass(tag);
     if (tileId === null) continue;
 
-    // 检测副露组边界：杠的叠放牌（top:-8px）是当前组的最后一张
+    const isRot270or90 = /rot(270|90)/.test(tag);
     const isStackedTile = /top:\s*-8px/.test(tag);
+
+    // 杠的叠放牌（top:-8px）：当前组最后一张
     if (isStackedTile) {
-      // 先加入当前组，然后结束这组
       currentMeld.push(tileId);
       if (currentMeld.length > 0) {
         melds.push(currentMeld);
         currentMeld = [];
       }
+      prevWasRot0 = false;
       continue;
     }
 
+    // rot270/rot90 且上一张是 rot0 → 新副露组边界（chi→pong 等）
+    if (isRot270or90 && prevWasRot0 && currentMeld.length > 0) {
+      melds.push(currentMeld);
+      currentMeld = [];
+    }
+
     currentMeld.push(tileId);
+    prevWasRot0 = !isRot270or90;
   }
 
-  // 保存最后一个副露组
   if (currentMeld.length > 0) {
     melds.push(currentMeld);
   }
@@ -184,14 +191,16 @@ export function getCurrentHandTiles(): {
     return null;
   }
 
+  // 确定当前操作玩家
+  const playerIndex = typeof st.k === "number" ? st.k : 0;
+  const seat = ((tz as Record<string, unknown>).seat as number) ?? 0;
+  // playerIndex 的视觉位置 = (playerIndex + 4 - seat) & 3
+  const visualPos = (playerIndex + 4 - seat) & 3;
+
   let html: string;
   if (typeof st.hd === "string") {
     html = st.hd;
   } else if (Array.isArray(st.hd)) {
-    // hd 按视觉位置索引：hd[0]=rot0, hd[1]=rot270, hd[2]=rot180, hd[3]=rot90
-    // player 0 的视觉位置 = (4 - seat) % 4
-    const seat = ((tz as Record<string, unknown>).seat as number) ?? 0;
-    const visualPos = (4 - seat) & 3;
     const playerHtml = st.hd[visualPos];
     if (!playerHtml) return null;
     html = playerHtml;
