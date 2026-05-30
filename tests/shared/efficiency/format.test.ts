@@ -1,65 +1,146 @@
 import { describe, it, expect } from "vitest";
 import {
-  formatEfficiencyResult,
-  formatQuickResult,
   formatShanten,
   formatAcceptance,
+  formatEfficiencyResult,
+  formatQuickResult,
 } from "../../../src/shared/efficiency/format";
-import { EfficiencyResult } from "../../../src/shared/efficiency/types";
+import type {
+  EfficiencyResult,
+  Draw,
+} from "../../../src/shared/efficiency/types";
 
-describe("efficiency format", () => {
-  const mockResult: EfficiencyResult = {
-    shanten: 1,
-    isHu: false,
-    tileCount: 13,
-    hand: "123m456p789s11z",
-    summary: {
-      shanten: 1,
-      isTenpai: false,
-      waits: [],
-      acceptanceCount: 8,
-      acceptanceTileCount: 24,
-      efficiency: 6.0,
-      expectedFan: 3.5,
-      avgFan: 4.0,
-      mainFans: ["平和", "断幺"],
-    },
-    elapsedMs: 15,
-  };
-
+describe("format", () => {
   describe("formatShanten", () => {
-    it("should format tenpai", () => {
+    it("should format -1 as 和了", () => {
+      expect(formatShanten(-1)).toBe("和了");
+    });
+
+    it("should format 0 as 听牌", () => {
       expect(formatShanten(0)).toBe("听牌");
     });
 
-    it("should format 1-shanten", () => {
-      expect(formatShanten(1)).toBe("一向听");
-    });
-
-    it("should format 2-shanten", () => {
-      expect(formatShanten(2)).toBe("两向听");
+    it("should format positive numbers as X向听", () => {
+      expect(formatShanten(1)).toBe("1向听");
+      expect(formatShanten(2)).toBe("2向听");
+      expect(formatShanten(3)).toBe("3向听");
     });
   });
 
   describe("formatAcceptance", () => {
-    it("should format acceptance count", () => {
-      expect(formatAcceptance(8, 24)).toBe("进张: 8种/24枚");
+    it("should return 无进张 for empty array", () => {
+      expect(formatAcceptance([])).toBe("无进张");
+    });
+
+    it("should format single acceptance", () => {
+      const acceptance: Draw[] = [
+        {
+          tileId: 0,
+          remainingCount: 2,
+          shanten: 0,
+          summary: {
+            shanten: 0,
+            isTenpai: true,
+            acceptanceCount: 0,
+            acceptanceTileCount: 0,
+            efficiency: 0,
+          },
+        },
+      ];
+
+      const result = formatAcceptance(acceptance);
+      expect(result).toContain("共2张");
+      expect(result).toContain("1m×2");
+    });
+
+    it("should format multiple acceptances", () => {
+      const acceptance: Draw[] = [
+        {
+          tileId: 0,
+          remainingCount: 2,
+          shanten: 0,
+          summary: {
+            shanten: 0,
+            isTenpai: true,
+            acceptanceCount: 0,
+            acceptanceTileCount: 0,
+            efficiency: 0,
+          },
+        },
+        {
+          tileId: 9,
+          remainingCount: 1,
+          shanten: 0,
+          summary: {
+            shanten: 0,
+            isTenpai: true,
+            acceptanceCount: 0,
+            acceptanceTileCount: 0,
+            efficiency: 0,
+          },
+        },
+      ];
+
+      const result = formatAcceptance(acceptance);
+      expect(result).toContain("共3张");
+      expect(result).toContain("1m×2");
+      expect(result).toContain("1p×1");
     });
   });
 
   describe("formatEfficiencyResult", () => {
-    it("should format full result", () => {
-      const formatted = formatEfficiencyResult(mockResult);
+    it("should format basic result", () => {
+      const result: EfficiencyResult = {
+        shanten: 0,
+        isHu: false,
+        tileCount: 13,
+        hand: "123m456p789s11z",
+        elapsedMs: 10,
+      };
 
-      expect(formatted).toContain("一向听");
-      expect(formatted).toContain("进张: 8种/24枚");
-      expect(formatted).toContain("效率: 6.00");
-      expect(formatted).toContain("期望番数: 3.5");
-      expect(formatted).toContain("主要番种: 平和、断幺");
+      const formatted = formatEfficiencyResult(result);
+      expect(formatted).toContain("手牌: 123m456p789s11z");
+      expect(formatted).toContain("向听: 听牌");
+      expect(formatted).toContain("耗时: 10ms");
     });
 
-    it("should handle missing optional fields", () => {
-      const minimalResult: EfficiencyResult = {
+    it("should format result with summary", () => {
+      const result: EfficiencyResult = {
+        shanten: 0,
+        isHu: false,
+        tileCount: 13,
+        hand: "123m456p789s11z",
+        summary: {
+          shanten: 0,
+          isTenpai: true,
+          waits: [0, 3],
+          acceptanceCount: 2,
+          acceptanceTileCount: 6,
+          efficiency: 0.5,
+          expectedFan: 2.5,
+          avgFan: 2.0,
+          mainFans: ["立直", "一発"],
+        },
+        elapsedMs: 15,
+      };
+
+      const formatted = formatEfficiencyResult(result);
+      expect(formatted).toContain("手牌: 123m456p789s11z");
+      expect(formatted).toContain("向听: 听牌");
+      expect(formatted).toContain("听牌");
+      expect(formatted).toContain("进张种: 2");
+      expect(formatted).toContain("进张数: 6");
+      expect(formatted).toContain("效率: 0.50");
+      expect(formatted).toContain("期望番数: 2.50");
+      expect(formatted).toContain("平均番数: 2.00");
+      expect(formatted).toContain("主要番型: 立直、一発");
+      expect(formatted).toContain("耗时: 15ms");
+    });
+  });
+
+  describe("formatQuickResult", () => {
+    it("should format quick result", () => {
+      const result: EfficiencyResult = {
         shanten: 2,
         isHu: false,
         tileCount: 13,
@@ -67,18 +148,32 @@ describe("efficiency format", () => {
         elapsedMs: 5,
       };
 
-      const formatted = formatEfficiencyResult(minimalResult);
-      expect(formatted).toContain("两向听");
+      const formatted = formatQuickResult(result);
+      expect(formatted).toContain("手牌: 123m456p789s11z");
+      expect(formatted).toContain("向听: 2向听");
+      expect(formatted).toContain("耗时: 5ms");
     });
-  });
 
-  describe("formatQuickResult", () => {
-    it("should format quick result", () => {
-      const formatted = formatQuickResult(mockResult);
+    it("should not include summary in quick result", () => {
+      const result: EfficiencyResult = {
+        shanten: 0,
+        isHu: false,
+        tileCount: 13,
+        hand: "123m456p789s11z",
+        summary: {
+          shanten: 0,
+          isTenpai: true,
+          acceptanceCount: 2,
+          acceptanceTileCount: 6,
+          efficiency: 0.5,
+        },
+        elapsedMs: 5,
+      };
 
-      expect(formatted).toContain("一向听");
-      expect(formatted).toContain("进张: 8种/24枚");
-      expect(formatted).not.toContain("主要番种"); // 快速模式不显示番种
+      const formatted = formatQuickResult(result);
+      expect(formatted).not.toContain("进张种");
+      expect(formatted).not.toContain("进张数");
+      expect(formatted).not.toContain("效率");
     });
   });
 });
