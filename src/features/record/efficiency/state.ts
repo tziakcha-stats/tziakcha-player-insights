@@ -112,7 +112,7 @@ export function parseHandHtml(html: string): {
   const closed: number[] = [];
   const melds: number[][] = [];
   let currentMeld: number[] = [];
-  let prevWasClosedOrRot0 = false;
+  let chiRemaining = 0; // chi/pong 还需要收集的牌数（rot270 后的 rot0 牌）
   let kongRemaining = 0; // 杠还需要收集的牌数
 
   const regex = /<div[^>]*class="[^"]*\btl\b[^"]*"[^>]*>/g;
@@ -132,7 +132,7 @@ export function parseHandHtml(html: string): {
       if (rawVal < FLOWER_TILE_VAL_MIN) {
         closed.push(Math.floor(rawVal / 4));
       }
-      prevWasClosedOrRot0 = true;
+      chiRemaining = 0;
       kongRemaining = 0;
       continue;
     }
@@ -144,7 +144,7 @@ export function parseHandHtml(html: string): {
     const isRot270or90 = /rot(270|90)/.test(tag);
     const isStackedTile = /top:\s*-8px/.test(tag);
 
-    // 杠的叠放牌（top:-8px）：这是杠的第一张，后面还有 3 张
+    // 杠的叠放牌（top:-8px）：杠的第一张，后面还有 3 张
     if (isStackedTile) {
       if (currentMeld.length > 0) {
         melds.push(currentMeld);
@@ -152,7 +152,7 @@ export function parseHandHtml(html: string): {
       }
       currentMeld.push(tileId);
       kongRemaining = 3;
-      prevWasClosedOrRot0 = false;
+      chiRemaining = 0;
       continue;
     }
 
@@ -164,18 +164,34 @@ export function parseHandHtml(html: string): {
         melds.push(currentMeld);
         currentMeld = [];
       }
-      prevWasClosedOrRot0 = false;
       continue;
     }
 
-    // rot270/rot90 且上一张是 rot0/闭门牌 → 新副露组边界（chi→pong 等）
-    if (isRot270or90 && prevWasClosedOrRot0 && currentMeld.length > 0) {
-      melds.push(currentMeld);
-      currentMeld = [];
+    // chi/pong 进行中：直接收集
+    if (chiRemaining > 0) {
+      currentMeld.push(tileId);
+      chiRemaining--;
+      if (chiRemaining === 0) {
+        melds.push(currentMeld);
+        currentMeld = [];
+      }
+      continue;
     }
 
+    // rot270/rot90 → 新副露组的首牌（chi/pong 的被叫牌），后面还有 2 张
+    if (isRot270or90) {
+      if (currentMeld.length > 0) {
+        melds.push(currentMeld);
+        currentMeld = [];
+      }
+      currentMeld.push(tileId);
+      chiRemaining = 2;
+      continue;
+    }
+
+    // rot0 无上下文 → pong 的首牌（碰的非旋转牌），后面还有 2 张
     currentMeld.push(tileId);
-    prevWasClosedOrRot0 = !isRot270or90;
+    chiRemaining = 2;
   }
 
   if (currentMeld.length > 0) {

@@ -111,24 +111,25 @@ describe("efficiency state", () => {
     });
 
     it("吃3p + 碰北：chi 和 pong 应分为两组", () => {
+      // 使用实际日志中的位置
       // 闭门 8 张 + 吃 3p + 碰北
       const html = [
-        closedTile(95, 392),
-        closedTile(100, 436),
-        closedTile(103, 480),
-        closedTile(112, 524),
-        closedTile(114, 568),
-        closedTile(132, 612),
-        closedTile(135, 656),
-        closedTile(119, 700),
+        closedTile(95, 524),
+        closedTile(100, 568),
+        closedTile(103, 612),
+        closedTile(108, 656),
+        closedTile(112, 700),
+        closedTile(114, 744),
+        closedTile(132, 788),
+        closedTile(135, 837),
         // 吃 3p：rot270(3p) + rot0(1p) + rot0(2p)
-        meldTileRot270("tl-3p", 148, 36),
-        meldTile("tl-1p", 208),
-        meldTile("tl-2p", 252),
-        // 碰北：rot270(N) + rot0(N) + rot0(N)
-        meldTileRot270("tl-4z", 316, 36),
-        meldTile("tl-4z", 321),
-        meldTile("tl-4z", 365),
+        meldTileRot270("tl-3p", 8, 36),
+        meldTile("tl-1p", 60),
+        meldTile("tl-2p", 104),
+        // 碰北：rot0(N) + rot0(N) + rot90(N)
+        meldTile("tl-4z", 153),
+        meldTile("tl-4z", 197),
+        meldTile("tl-4z", 249),
       ].join("");
 
       const result = parseHandHtml(html);
