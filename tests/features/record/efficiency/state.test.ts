@@ -78,6 +78,27 @@ describe("efficiency state", () => {
 
       document.body.removeChild(handContainer);
     });
+
+    it("should select correct player hand by index", () => {
+      const hand0 = document.createElement("div");
+      hand0.className = "hand";
+      document.body.appendChild(hand0);
+
+      const hand1 = document.createElement("div");
+      hand1.className = "hand";
+      document.body.appendChild(hand1);
+
+      const tile1 = document.createElement("div");
+      tile1.className = "tl";
+      tile1.dataset.val = "0";
+      hand1.appendChild(tile1);
+
+      expect(getCurrentHandTiles(0)).toBeNull();
+      expect(getCurrentHandTiles(1)).toEqual([0]);
+
+      document.body.removeChild(hand0);
+      document.body.removeChild(hand1);
+    });
   });
 
   describe("resetState", () => {

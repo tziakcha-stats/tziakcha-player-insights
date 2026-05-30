@@ -42,7 +42,9 @@ function performAnalysis(): void {
     return;
   }
 
-  const handTiles = getCurrentHandTiles();
+  const playerIndex =
+    typeof tz.stat?.[step]?.k === "number" ? tz.stat[step].k : 0;
+  const handTiles = getCurrentHandTiles(playerIndex);
   if (!handTiles || handTiles.length < MIN_HAND_TILES) {
     clearAnalysis();
     return;

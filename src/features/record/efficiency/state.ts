@@ -59,12 +59,14 @@ export function setAnalysisResult(result: EfficiencyResult): void {
 
 /**
  * Get current hand tiles from DOM
+ * @param playerIndex - 当前玩家索引，从 tz.stat[tz.stp].k 获取
  * @returns Array of tile IDs, or null if not available
  */
-export function getCurrentHandTiles(): number[] | null {
-  const handContainer = document.querySelector(".hand");
-  if (!handContainer) return null;
+export function getCurrentHandTiles(playerIndex: number = 0): number[] | null {
+  const handContainers = document.querySelectorAll(".hand");
+  if (handContainers.length <= playerIndex) return null;
 
+  const handContainer = handContainers[playerIndex] as HTMLElement;
   const tileElements = handContainer.querySelectorAll(".tl");
   if (tileElements.length === 0) return null;
 

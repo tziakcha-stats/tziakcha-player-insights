@@ -2,6 +2,7 @@ import {
   analyzeHandDetailed,
   analyzeEfficiency,
 } from "gb-mahjong-js/efficiency";
+import { warnLog } from "../logger";
 import type {
   AnalysisMode,
   EfficiencyResult,
@@ -126,7 +127,8 @@ export function analyzeHand(
       ),
       elapsedMs: Date.now() - startTime,
     };
-  } catch {
+  } catch (error) {
+    warnLog("[Efficiency] analyzeHand 失败，降级为快速分析:", error);
     return analyzeHandQuick(handTiles);
   }
 }
@@ -146,7 +148,8 @@ export function analyzeHandQuick(handTiles: number[]): EfficiencyResult {
       summary: mapSummary(result.summary),
       elapsedMs: Date.now() - startTime,
     };
-  } catch {
+  } catch (error) {
+    warnLog("[Efficiency] analyzeHandQuick 失败:", error);
     return {
       shanten: 0,
       isHu: false,
