@@ -139,6 +139,19 @@ function parseHandHtml(html: string): {
     // 无 data-val → 副露牌，从 CSS 类名解析
     const tileId = parseTileIdFromClass(tag);
     if (tileId === null) continue;
+
+    // 检测副露组边界：杠的叠放牌（top:-8px）是当前组的最后一张
+    const isStackedTile = /top:\s*-8px/.test(tag);
+    if (isStackedTile) {
+      // 先加入当前组，然后结束这组
+      currentMeld.push(tileId);
+      if (currentMeld.length > 0) {
+        melds.push(currentMeld);
+        currentMeld = [];
+      }
+      continue;
+    }
+
     currentMeld.push(tileId);
   }
 
