@@ -91,7 +91,7 @@ export function formatEfficiencyResult(
 }
 
 function tileIdToString(tileId: number): string {
-  const suits = ["m", "s", "p", "z"];
+  const suits = ["m", "p", "s", "z"];
   const suitIndex = Math.floor(tileId / 9);
   const rank = (tileId % 9) + 1;
 
