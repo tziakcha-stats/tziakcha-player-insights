@@ -105,7 +105,7 @@ function parseTileIdFromClass(className: string): number | null {
  * - 闭门牌：有 data-val 属性
  * - 副露牌：无 data-val 属性（hd_hs 不给副露牌加 data-val）
  */
-function parseHandHtml(html: string): {
+export function parseHandHtml(html: string): {
   closed: number[];
   melds: number[][];
 } {
