@@ -112,7 +112,8 @@ function parseHandHtml(html: string): {
   const closed: number[] = [];
   const melds: number[][] = [];
   let currentMeld: number[] = [];
-  let prevWasRot0 = false; // 上一张牌是 rot0（闭门牌或副露组内的牌）
+  let prevWasClosedOrRot0 = false;
+  let kongRemaining = 0; // 杠还需要收集的牌数
 
   const regex = /<div[^>]*class="[^"]*\btl\b[^"]*"[^>]*>/g;
   let match;
@@ -131,7 +132,8 @@ function parseHandHtml(html: string): {
       if (rawVal < FLOWER_TILE_VAL_MIN) {
         closed.push(Math.floor(rawVal / 4));
       }
-      prevWasRot0 = true;
+      prevWasClosedOrRot0 = true;
+      kongRemaining = 0;
       continue;
     }
 
@@ -142,25 +144,38 @@ function parseHandHtml(html: string): {
     const isRot270or90 = /rot(270|90)/.test(tag);
     const isStackedTile = /top:\s*-8px/.test(tag);
 
-    // 杠的叠放牌（top:-8px）：当前组最后一张
+    // 杠的叠放牌（top:-8px）：这是杠的第一张，后面还有 3 张
     if (isStackedTile) {
-      currentMeld.push(tileId);
       if (currentMeld.length > 0) {
         melds.push(currentMeld);
         currentMeld = [];
       }
-      prevWasRot0 = false;
+      currentMeld.push(tileId);
+      kongRemaining = 3;
+      prevWasClosedOrRot0 = false;
       continue;
     }
 
-    // rot270/rot90 且上一张是 rot0 → 新副露组边界（chi→pong 等）
-    if (isRot270or90 && prevWasRot0 && currentMeld.length > 0) {
+    // 杠进行中：直接收集
+    if (kongRemaining > 0) {
+      currentMeld.push(tileId);
+      kongRemaining--;
+      if (kongRemaining === 0) {
+        melds.push(currentMeld);
+        currentMeld = [];
+      }
+      prevWasClosedOrRot0 = false;
+      continue;
+    }
+
+    // rot270/rot90 且上一张是 rot0/闭门牌 → 新副露组边界（chi→pong 等）
+    if (isRot270or90 && prevWasClosedOrRot0 && currentMeld.length > 0) {
       melds.push(currentMeld);
       currentMeld = [];
     }
 
     currentMeld.push(tileId);
-    prevWasRot0 = !isRot270or90;
+    prevWasClosedOrRot0 = !isRot270or90;
   }
 
   if (currentMeld.length > 0) {
