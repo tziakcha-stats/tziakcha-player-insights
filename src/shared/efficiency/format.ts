@@ -92,17 +92,14 @@ export function formatEfficiencyResult(
 
 function tileIdToString(tileId: number): string {
   // 解析器 tileId: m(1-9), s(10-18), p(19-27), z(28-34)
-  const suits = ["m", "s", "p", "z"];
-  const suitIndex = Math.floor(tileId / 9);
-  const rank = tileId - 9 * suitIndex;
+  if (tileId >= 1 && tileId <= 9) return `${tileId}m`;
+  if (tileId >= 10 && tileId <= 18) return `${tileId - 9}s`;
+  if (tileId >= 19 && tileId <= 27) return `${tileId - 18}p`;
 
-  if (suitIndex < 3) {
-    return `${rank}${suits[suitIndex]}`;
-  } else {
-    const windNames = ["东", "南", "西", "北"];
-    const dragonNames = ["白", "發", "中"];
-    const index = tileId - 27;
-    if (index < 4) return windNames[index];
-    return dragonNames[index - 4];
-  }
+  // 字牌 z(28-34)
+  const windNames = ["东", "南", "西", "北"];
+  const dragonNames = ["白", "發", "中"];
+  const index = tileId - 28;
+  if (index < 4) return windNames[index];
+  return dragonNames[index - 4];
 }
