@@ -30,6 +30,7 @@ let initTimer: ReturnType<typeof setTimeout> | null = null;
 function doAnalysis(): void {
   const handTiles = getCurrentHandTiles();
   if (!handTiles || handTiles.length < 13) {
+    showError("未检测到手牌");
     return;
   }
 
@@ -121,10 +122,14 @@ export function initEfficiencyAnalysis(): void {
   }
 
   const panel = mountEfficiencyPanel();
-  if (!panel) return;
+  if (!panel) {
+    warnLog("[Efficiency] 面板挂载失败");
+    return;
+  }
 
   // 手动分析按钮
   onAnalyzeClick(() => {
+    infoLog("[Efficiency] 手动分析触发");
     doAnalysis();
   });
 
