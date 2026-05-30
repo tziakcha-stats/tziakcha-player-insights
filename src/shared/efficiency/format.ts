@@ -1,153 +1,95 @@
-import type { EfficiencyResult, Summary, Discard, Draw } from "./types";
-
 /**
- * 向听数转文字
+ * 格式化 gb-mahjong-js 原始结果为可读文本
  */
-export function formatShanten(shanten: number): string {
-  if (shanten === -1) return "和了";
-  if (shanten === 0) return "听牌";
-  return `${shanten}向听`;
-}
-
-/**
- * 格式化进张信息（13 张手牌）
- */
-export function formatAcceptance(acceptance: Draw[]): string {
-  if (!acceptance || acceptance.length === 0) {
-    return "无进张";
-  }
-
-  const totalTiles = acceptance.reduce((sum, a) => sum + a.remainingCount, 0);
-  const tileNames = acceptance
-    .map((a) => `${tileIdToString(a.tileId)}×${a.remainingCount}`)
-    .join(" ");
-
-  return `共${totalTiles}张: ${tileNames}`;
-}
-
-/**
- * 格式化打牌推荐（14 张手牌）
- */
-export function formatDiscards(discards: Discard[]): string {
-  if (!discards || discards.length === 0) {
-    return "无推荐";
-  }
-
-  const best = discards[0];
-  const lines = [`推荐打 ${tileIdToString(best.discardTileId)}`];
-
-  if (best.summary) {
-    const s = best.summary;
-    const parts: string[] = [];
-    parts.push(`向听: ${formatShanten(s.shanten)}`);
-    if (s.efficiency > 0) parts.push(`效率: ${s.efficiency.toFixed(2)}`);
-    if (typeof s.expectedFan === "number")
-      parts.push(`期望番: ${s.expectedFan.toFixed(1)}`);
-    if (s.mainFans && s.mainFans.length > 0)
-      parts.push(`番型: ${s.mainFans.join("、")}`);
-    lines.push(parts.join(" | "));
-  }
-
-  if (discards.length > 1) {
-    const alts = discards
-      .slice(1, 4)
-      .map(
-        (d) =>
-          `${tileIdToString(d.discardTileId)}(${d.summary?.efficiency?.toFixed(1) ?? "?"})`,
-      )
-      .join(" ");
-    lines.push(`备选: ${alts}`);
-  }
-
-  return lines.join("\n");
-}
-
-/**
- * 格式化完整分析结果
- */
-export function formatEfficiencyResult(result: EfficiencyResult): string {
+export function formatEfficiencyResult(
+  result: Record<string, unknown>,
+): string {
   const lines: string[] = [];
 
   lines.push(`手牌: ${result.hand}`);
-  lines.push(`向听: ${formatShanten(result.shanten)}`);
+  lines.push(`向听: ${result.shanten}`);
+
+  if (result.isHu) {
+    lines.push("和了");
+  }
+
+  const summary = result.summary as Record<string, unknown> | undefined;
+  if (summary) {
+    if (summary.acceptanceCount) {
+      lines.push(`进张种: ${summary.acceptanceCount}`);
+    }
+    if (summary.acceptanceTileCount) {
+      lines.push(`进张数: ${summary.acceptanceTileCount}`);
+    }
+    if (summary.efficiency) {
+      lines.push(`效率: ${summary.efficiency}`);
+    }
+    if (summary.expectedFan != null) {
+      lines.push(`期望番: ${summary.expectedFan}`);
+    }
+    if (summary.mainFans && Array.isArray(summary.mainFans)) {
+      const names = summary.mainFans.map((f: unknown) =>
+        typeof f === "string" ? f : (f as Record<string, unknown>).name,
+      );
+      lines.push(`番型: ${names.join("、")}`);
+    }
+  }
 
   // 14 张：显示打牌推荐
-  if (result.discards && result.discards.length > 0) {
-    lines.push(formatDiscards(result.discards));
+  const discards = result.discards as
+    | Array<Record<string, unknown>>
+    | undefined;
+  if (discards && discards.length > 0) {
+    lines.push("--- 打牌推荐 ---");
+    for (const d of discards.slice(0, 5)) {
+      const tile = tileIdToString(d.discardTileId as number);
+      const s = d.summary as Record<string, unknown> | undefined;
+      const parts = [`打${tile}`];
+      if (s) {
+        parts.push(`向听${s.shanten}`);
+        if (s.efficiency) parts.push(`效率${s.efficiency}`);
+        if (s.expectedFan != null) parts.push(`期望番${s.expectedFan}`);
+        if (s.mainFans && Array.isArray(s.mainFans)) {
+          const names = s.mainFans.map((f: unknown) =>
+            typeof f === "string" ? f : (f as Record<string, unknown>).name,
+          );
+          parts.push(names.join("/"));
+        }
+      }
+      lines.push(parts.join(" | "));
+    }
   }
 
-  // 13 张：显示进张信息
-  if (result.summary) {
-    lines.push(formatSummary(result.summary));
+  // 13 张：显示进张详情
+  const draws = result.draws as Array<Record<string, unknown>> | undefined;
+  if (draws && draws.length > 0) {
+    lines.push("--- 进张详情 ---");
+    for (const draw of draws) {
+      const tile = tileIdToString(draw.tileId as number);
+      const count = draw.remainingCount;
+      const s = draw.summary as Record<string, unknown> | undefined;
+      const parts = [`${tile}×${count}`];
+      if (s) {
+        if (s.efficiency) parts.push(`效率${s.efficiency}`);
+        if (s.expectedFan != null) parts.push(`期望番${s.expectedFan}`);
+        if (s.mainFans && Array.isArray(s.mainFans)) {
+          const names = s.mainFans.map((f: unknown) =>
+            typeof f === "string" ? f : (f as Record<string, unknown>).name,
+          );
+          parts.push(names.join("/"));
+        }
+      }
+      lines.push(parts.join(" | "));
+    }
   }
 
-  if (result.elapsedMs !== undefined) {
+  if (result.elapsedMs != null) {
     lines.push(`耗时: ${result.elapsedMs}ms`);
   }
 
   return lines.join("\n");
 }
 
-/**
- * 格式化快速分析结果
- */
-export function formatQuickResult(result: EfficiencyResult): string {
-  const lines: string[] = [];
-
-  lines.push(`手牌: ${result.hand}`);
-  lines.push(`向听: ${formatShanten(result.shanten)}`);
-
-  if (result.elapsedMs !== undefined) {
-    lines.push(`耗时: ${result.elapsedMs}ms`);
-  }
-
-  return lines.join("\n");
-}
-
-/**
- * 格式化摘要信息
- */
-function formatSummary(summary: Summary): string {
-  const parts: string[] = [];
-
-  if (summary.acceptanceCount > 0) {
-    parts.push(`进张种: ${summary.acceptanceCount}`);
-  }
-
-  if (summary.acceptanceTileCount > 0) {
-    parts.push(`进张数: ${summary.acceptanceTileCount}`);
-  }
-
-  if (summary.efficiency > 0) {
-    parts.push(`效率: ${summary.efficiency.toFixed(2)}`);
-  }
-
-  if (typeof summary.expectedFan === "number") {
-    parts.push(`期望番: ${summary.expectedFan.toFixed(1)}`);
-  }
-
-  if (summary.mainFans && summary.mainFans.length > 0) {
-    parts.push(`番型: ${summary.mainFans.join("、")}`);
-  }
-
-  return parts.join(" | ");
-}
-
-export function formatEfficiency(efficiency: number): string {
-  return efficiency.toFixed(2);
-}
-
-export function formatExpectedFan(expectedFan: number): string {
-  return expectedFan.toFixed(2);
-}
-
-export function formatMainFans(mainFans: string[]): string {
-  return mainFans.join("、");
-}
-
-/**
- * 牌 ID 转字符串
- */
 function tileIdToString(tileId: number): string {
   const suits = ["m", "p", "s", "z"];
   const suitIndex = Math.floor(tileId / 9);
@@ -159,11 +101,7 @@ function tileIdToString(tileId: number): string {
     const windNames = ["东", "南", "西", "北"];
     const dragonNames = ["白", "發", "中"];
     const index = tileId - 27;
-
-    if (index < 4) {
-      return windNames[index];
-    } else {
-      return dragonNames[index - 4];
-    }
+    if (index < 4) return windNames[index];
+    return dragonNames[index - 4];
   }
 }

@@ -1,12 +1,12 @@
 import { w } from "../../../shared/env";
-import { EfficiencyResult } from "../../../shared/efficiency";
 
 interface EfficiencyState {
   lastAnalyzedStep: number | null;
-  lastAnalysisResult: EfficiencyResult | null;
+  lastAnalysisResult: Record<string, unknown> | null;
 }
 
 const STATE_KEY = "__efficiency_state";
+const FLOWER_TILE_VAL_MIN = 136;
 
 function getState(): EfficiencyState {
   const win = w as unknown as Record<string, unknown>;
@@ -19,9 +19,6 @@ function getState(): EfficiencyState {
   return win[STATE_KEY] as EfficiencyState;
 }
 
-/**
- * Reset all state to initial values
- */
 export function resetState(): void {
   (w as unknown as Record<string, unknown>)[STATE_KEY] = {
     lastAnalyzedStep: null,
@@ -29,35 +26,21 @@ export function resetState(): void {
   };
 }
 
-/**
- * Get last analyzed step number
- */
 export function getLastAnalyzedStep(): number | null {
   return getState().lastAnalyzedStep;
 }
 
-/**
- * Set last analyzed step number
- */
 export function setLastAnalyzedStep(step: number): void {
   getState().lastAnalyzedStep = step;
 }
 
-/**
- * Get cached analysis result
- */
-export function getAnalysisResult(): EfficiencyResult | null {
+export function getAnalysisResult(): Record<string, unknown> | null {
   return getState().lastAnalysisResult;
 }
 
-/**
- * Set analysis result cache
- */
-export function setAnalysisResult(result: EfficiencyResult): void {
+export function setAnalysisResult(result: Record<string, unknown>): void {
   getState().lastAnalysisResult = result;
 }
-
-const FLOWER_TILE_VAL_MIN = 136;
 
 /**
  * Get current hand tiles from DOM
@@ -78,7 +61,6 @@ export function getCurrentHandTiles(playerIndex: number = 0): number[] | null {
     const val = htmlEl.dataset.val;
     if (val) {
       const rawVal = parseInt(val, 10);
-      // 跳过花牌 (data-val >= 136)
       if (rawVal >= FLOWER_TILE_VAL_MIN) return;
       const tileId = Math.floor(rawVal / 4);
       tiles.push(tileId);

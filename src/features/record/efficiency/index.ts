@@ -1,5 +1,5 @@
 import { infoLog, warnLog } from "../../../shared/logger";
-import { analyzeHand, EfficiencyResult } from "../../../shared/efficiency";
+import { analyzeHand } from "../../../shared/efficiency";
 import {
   getCurrentHandTiles,
   getLastAnalyzedStep,
@@ -48,7 +48,7 @@ function performAnalysis(): void {
     infoLog(`[Efficiency] 分析步骤 ${step}，手牌 ${handTiles.length} 张`);
     showLoading();
 
-    const result: EfficiencyResult = analyzeHand(handTiles);
+    const result = analyzeHand(handTiles);
 
     renderAnalysis(result);
     setLastAnalyzedStep(step);

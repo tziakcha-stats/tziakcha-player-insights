@@ -1,4 +1,3 @@
-import { EfficiencyResult } from "../../../shared/efficiency";
 import { formatEfficiencyResult } from "../../../shared/efficiency";
 import "./ui.less";
 
@@ -7,24 +6,10 @@ export function createEfficiencyPanel(): HTMLElement {
   panel.id = "efficiency-panel";
   panel.className = "efficiency-container";
 
-  const header = document.createElement("div");
-  header.className = "efficiency-header";
-
-  const title = document.createElement("span");
-  title.textContent = "效率分析";
-
-  const modeLabel = document.createElement("span");
-  modeLabel.className = "efficiency-mode";
-  modeLabel.id = "efficiency-mode";
-
-  header.appendChild(title);
-  header.appendChild(modeLabel);
-
   const content = document.createElement("div");
   content.className = "efficiency-content";
   content.id = "efficiency-content";
 
-  panel.appendChild(header);
   panel.appendChild(content);
 
   return panel;
@@ -67,7 +52,7 @@ export function showError(message: string): void {
   }
 }
 
-export function renderAnalysis(result: EfficiencyResult): void {
+export function renderAnalysis(result: Record<string, unknown>): void {
   const content = document.getElementById("efficiency-content");
   if (content) {
     content.textContent = formatEfficiencyResult(result);
