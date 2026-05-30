@@ -191,26 +191,32 @@ export function getCurrentHandTiles(): {
     return null;
   }
 
-  // 确定当前操作玩家
+  // 确定目标玩家的视觉位置
   const playerIndex = typeof st.k === "number" ? st.k : 0;
   const seat = ((tz as Record<string, unknown>).seat as number) ?? 0;
-  // playerIndex 的视觉位置 = (playerIndex + 4 - seat) & 3
   const visualPos = (playerIndex + 4 - seat) & 3;
 
-  let html: string;
-  if (Array.isArray(st.hd)) {
-    // 全量更新：hd 是 4 个玩家的手牌 HTML 数组
-    const playerHtml = st.hd[visualPos];
-    if (!playerHtml) return null;
-    html = playerHtml;
-  } else if (typeof st.hd === "string") {
-    // 单玩家更新：hd 是当前操作玩家 (st.k) 的手牌 HTML
-    const k = typeof st.k === "number" ? st.k : 0;
-    if (k !== visualPos) return null; // 不是目标玩家的手牌
-    html = st.hd;
-  } else {
-    return null;
+  // stat[step].hd 只存储该步骤发生变化的手牌，需要回溯找到目标玩家的最新手牌
+  let html: string | null = null;
+  for (let i = step; i >= 0; i--) {
+    const s = tz.stat[i] as Record<string, unknown> | undefined;
+    if (!s || !s.hd) continue;
+
+    if (Array.isArray(s.hd)) {
+      if (s.hd[visualPos]) {
+        html = s.hd[visualPos];
+        break;
+      }
+    } else if (typeof s.hd === "string") {
+      const k = typeof s.k === "number" ? s.k : 0;
+      if (k === visualPos) {
+        html = s.hd;
+        break;
+      }
+    }
   }
+
+  if (!html) return null;
 
   const result = parseHandHtml(html);
 
