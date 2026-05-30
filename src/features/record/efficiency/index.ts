@@ -46,7 +46,7 @@ function doAnalysis(): void {
     );
     showLoading();
 
-    const result = analyzeHand(handStr, tileCount, hand.closed);
+    const result = analyzeHand(handStr, tileCount);
 
     renderAnalysis(result);
     setLastResult(result);

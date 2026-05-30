@@ -200,7 +200,7 @@ export function getCurrentHandTiles(): {
  * [8,8,8] -> "999m", [27,28,29] -> "ESW"
  */
 function tileGroupToStr(tileIds: number[]): string {
-  const suits: Record<string, number[]> = { m: [], p: [], s: [], z: [] };
+  const suits: Record<string, number[]> = { m: [], s: [], p: [], z: [] };
   const honors: string[] = [];
   const honorMap: Record<number, string> = {
     27: "E",
@@ -213,15 +213,18 @@ function tileGroupToStr(tileIds: number[]): string {
   };
 
   for (const tileId of tileIds) {
-    if (tileId < 9) suits.m.push(tileId + 1);
-    else if (tileId < 18) suits.p.push(tileId - 8);
-    else if (tileId < 27) suits.s.push(tileId - 17);
-    else if (honorMap[tileId]) honors.push(honorMap[tileId]);
-    else suits.z.push(tileId - 26);
+    if (tileId < 27) {
+      const suit = ["m", "s", "p"][Math.floor(tileId / 9)];
+      suits[suit].push((tileId % 9) + 1);
+    } else if (honorMap[tileId]) {
+      honors.push(honorMap[tileId]);
+    } else {
+      suits.z.push(tileId - 26);
+    }
   }
 
   let str = "";
-  for (const suit of ["m", "p", "s"]) {
+  for (const suit of ["m", "s", "p"]) {
     if (suits[suit].length > 0) {
       suits[suit].sort((a, b) => a - b);
       str += suits[suit].join("") + suit;

@@ -57,7 +57,7 @@ describe("efficiency state", () => {
       // tileId: 0-8=m, 9-17=p, 18-26=s, 27+=z
       const result = buildHandString([0, 1, 2, 9, 10, 11, 27, 28], []);
       expect(result).toContain("m");
-      expect(result).toContain("p");
+      expect(result).toContain("s");
     });
 
     it("should include meld prefix", () => {
