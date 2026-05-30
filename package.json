@@ -21,6 +21,7 @@
   },
   "private": true,
   "dependencies": {
+    "gb-mahjong-js": "^2.2.1",
     "tziakcha-fetcher": "^2.0.1"
   },
   "lint-staged": {
