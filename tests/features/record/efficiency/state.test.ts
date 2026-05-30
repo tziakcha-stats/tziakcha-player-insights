@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
-  getCurrentHandTiles,
   getLastStep,
   setLastStep,
   getLastHandStr,
@@ -9,6 +8,7 @@ import {
   setLastResult,
   resetState,
   handTilesToStr,
+  buildHandString,
 } from "../../../../src/features/record/efficiency/state";
 
 describe("efficiency state", () => {
@@ -43,40 +43,25 @@ describe("efficiency state", () => {
 
   describe("handTilesToStr", () => {
     it("should sort and join tile IDs", () => {
-      expect(handTilesToStr([3, 1, 2])).toBe("1,2,3");
-      expect(handTilesToStr([10, 0, 5])).toBe("0,5,10");
+      expect(handTilesToStr([3, 1, 2], [])).toBe("1,2,3");
+      expect(handTilesToStr([10, 0, 5], [])).toBe("0,5,10");
+    });
+
+    it("should include meld tiles", () => {
+      expect(handTilesToStr([0, 1], [[27, 28, 29]])).toBe("0,1,27,28,29");
     });
   });
 
-  describe("getCurrentHandTiles", () => {
-    it("should return null when no hand container exists", () => {
-      expect(getCurrentHandTiles()).toBeNull();
+  describe("buildHandString", () => {
+    it("should build hand string from closed tiles", () => {
+      const result = buildHandString([0, 1, 2, 9, 10, 11, 27, 28], []);
+      expect(result).toContain("m");
+      expect(result).toContain("s");
     });
 
-    it("should extract tile IDs and filter flowers", () => {
-      const handContainer = document.createElement("div");
-      handContainer.className = "hand";
-      document.body.appendChild(handContainer);
-
-      const tile1 = document.createElement("div");
-      tile1.className = "tl";
-      tile1.dataset.val = "0";
-      handContainer.appendChild(tile1);
-
-      const tile2 = document.createElement("div");
-      tile2.className = "tl";
-      tile2.dataset.val = "4";
-      handContainer.appendChild(tile2);
-
-      const flower = document.createElement("div");
-      flower.className = "tl";
-      flower.dataset.val = "136";
-      handContainer.appendChild(flower);
-
-      const result = getCurrentHandTiles();
-      expect(result).toEqual([0, 1]);
-
-      document.body.removeChild(handContainer);
+    it("should include meld prefix", () => {
+      const result = buildHandString([0, 1, 2, 9, 10, 11, 27], [[28, 29, 30]]);
+      expect(result).toContain("[S");
     });
   });
 

@@ -3,6 +3,22 @@ import { w } from "../../../shared/env";
 const FLOWER_TILE_VAL_MIN = 136;
 const PLAYER_INDEX = 0;
 
+// tl-1m -> 0, tl-2m -> 1, ..., tl-E -> 27, ..., tl-P -> 33
+const TL_CLASS_TO_ID: Record<string, number> = {};
+const SUITS = ["m", "s", "p"];
+for (let s = 0; s < 3; s++) {
+  for (let r = 1; r <= 9; r++) {
+    TL_CLASS_TO_ID[`${r}${SUITS[s]}`] = s * 9 + (r - 1);
+  }
+}
+TL_CLASS_TO_ID["1z"] = 27; // E
+TL_CLASS_TO_ID["2z"] = 28; // S
+TL_CLASS_TO_ID["3z"] = 29; // W
+TL_CLASS_TO_ID["4z"] = 30; // N
+TL_CLASS_TO_ID["5z"] = 31; // C
+TL_CLASS_TO_ID["6z"] = 32; // F
+TL_CLASS_TO_ID["7z"] = 33; // P
+
 interface EfficiencyState {
   lastStep: number | null;
   lastHandStr: string | null;
@@ -55,86 +71,139 @@ export function setLastResult(result: Record<string, unknown>): void {
   getState().lastResult = result;
 }
 
-function readTileIds(container: Element): number[] {
-  const tiles: number[] = [];
-  container.querySelectorAll(".tl").forEach((el) => {
-    const htmlEl = el as HTMLElement;
-    const val = htmlEl.dataset.val;
-    if (val) {
-      const rawVal = parseInt(val, 10);
-      if (rawVal >= FLOWER_TILE_VAL_MIN) return;
-      tiles.push(Math.floor(rawVal / 4));
-    }
-  });
-  return tiles;
+/**
+ * 从 CSS 类名解析牌 ID
+ * tl-1m -> 0, tl-9p -> 26, tl-E -> 27, tl-P -> 33
+ */
+function parseTileIdFromClass(className: string): number | null {
+  const match = className.match(/\btl-([1-9][msp]|[1-7]z)\b/);
+  if (match) {
+    return TL_CLASS_TO_ID[match[1]] ?? null;
+  }
+  // 字牌简写
+  const honorMatch = className.match(/\btl-([ESWNCFP])\b/);
+  if (honorMatch) {
+    const map: Record<string, number> = {
+      E: 27,
+      S: 28,
+      W: 29,
+      N: 30,
+      C: 31,
+      F: 32,
+      P: 33,
+    };
+    return map[honorMatch[1]] ?? null;
+  }
+  return null;
 }
 
 /**
- * 读取 player 0 的闭门手牌 tileId 数组
+ * 从 HTML 字符串中解析所有牌（闭门 + 副露）
+ * stat[].hd 是 hd_hs 函数生成的 HTML，包含所有 .tl 元素
  */
-export function getCurrentHandTiles(): number[] | null {
-  const handContainers = document.querySelectorAll(".hand");
-  if (handContainers.length <= PLAYER_INDEX) return null;
+function parseHandHtml(html: string): {
+  closed: number[];
+  melds: number[][];
+} {
+  const closed: number[] = [];
+  const melds: number[][] = [];
+  let currentMeld: number[] = [];
 
-  const tiles = readTileIds(handContainers[PLAYER_INDEX]);
-  return tiles.length > 0 ? tiles : null;
-}
+  // 匹配所有 .tl 元素
+  const regex = /<div[^>]*class="[^"]*\btl\b[^"]*"[^>]*>/g;
+  let match;
 
-/**
- * 读取 player 0 的副露牌组
- * 返回每组副露的 tileId 数组
- */
-export function getMeldGroups(): number[][] {
-  const meldSelectors = [".furo", ".fulou", ".meld", ".naki"];
-  const containers = document.querySelectorAll(".hand");
-  if (containers.length <= PLAYER_INDEX) return [];
+  while ((match = regex.exec(html)) !== null) {
+    const tag = match[0];
 
-  const playerEl = containers[PLAYER_INDEX].parentElement;
-  if (!playerEl) return [];
-
-  const groups: number[][] = [];
-
-  for (const selector of meldSelectors) {
-    const meldContainers = playerEl.querySelectorAll(selector);
-    for (const meldContainer of meldContainers) {
-      // 每个副露容器可能有多个副露组
-      // 尝试读取子容器（每个子容器是一个副露组）
-      const subContainers = meldContainer.querySelectorAll(
-        ":scope > div, :scope > span",
-      );
-
-      if (subContainers.length > 0) {
-        for (const sub of subContainers) {
-          const tiles = readTileIds(sub);
-          if (tiles.length >= 3) {
-            groups.push(tiles);
-          }
-        }
-      } else {
-        // 没有子容器，直接读取所有牌
-        const tiles = readTileIds(meldContainer);
-        if (tiles.length >= 3) {
-          // 按 3 或 4 张一组分割
-          for (let i = 0; i < tiles.length; i += 3) {
-            const group = tiles.slice(i, i + 4);
-            if (group.length >= 3) {
-              groups.push(group);
-            }
-          }
-        }
+    // 从 data-val 属性读取（闭门牌）
+    const valMatch = tag.match(/data-val="(\d+)"/);
+    if (valMatch) {
+      const rawVal = parseInt(valMatch[1], 10);
+      if (rawVal < FLOWER_TILE_VAL_MIN) {
+        closed.push(Math.floor(rawVal / 4));
       }
+      continue;
     }
-    if (groups.length > 0) break;
+
+    // 从 CSS 类名读取（副露牌，没有 data-val）
+    const tileId = parseTileIdFromClass(tag);
+    if (tileId === null) continue;
+
+    // 判断是否为副露牌（rot270/rot90 且非 dd 类）
+    const isMeldTile = /rot(270|90)/.test(tag) && !/rot0/.test(tag);
+    const isRotatedTop = /top:\s*-8px/.test(tag); // 叠放的第四张牌
+
+    if (isMeldTile || isRotatedTop) {
+      currentMeld.push(tileId);
+    } else {
+      // 如果有未完成的副露组，先保存
+      if (currentMeld.length > 0) {
+        melds.push(currentMeld);
+        currentMeld = [];
+      }
+      closed.push(tileId);
+    }
   }
 
-  return groups;
+  // 保存最后一个副露组
+  if (currentMeld.length > 0) {
+    melds.push(currentMeld);
+  }
+
+  return { closed, melds };
+}
+
+/**
+ * 读取 player 0 当前步骤的手牌（含副露）
+ * 直接从 stat[].hd HTML 解析，而非从 DOM 读取
+ */
+export function getCurrentHandTiles(): {
+  closed: number[];
+  melds: number[][];
+} | null {
+  const tz = (w as unknown as Record<string, unknown>).__review_tz_instance as
+    | Record<string, unknown>
+    | undefined;
+  if (!tz || typeof tz.stp !== "number" || !Array.isArray(tz.stat)) {
+    return null;
+  }
+
+  const step = tz.stp;
+  const st = tz.stat[step] as Record<string, unknown> | undefined;
+  if (!st || !st.hd) {
+    return null;
+  }
+
+  let html: string;
+  if (typeof st.hd === "string") {
+    html = st.hd;
+  } else if (Array.isArray(st.hd)) {
+    // hd 是 4 个玩家的手牌 HTML 数组
+    // 需要根据 seat 映射找到 player 0 的手牌
+    const seat = ((tz as Record<string, unknown>).seat as number) ?? 0;
+    const playerHtml = st.hd[seat] ?? st.hd[0];
+    if (!playerHtml) return null;
+    html = playerHtml;
+  } else {
+    return null;
+  }
+
+  const result = parseHandHtml(html);
+
+  // 验证：闭门 + 副露总张数应为 13 或 14
+  const meldCount = result.melds.reduce((s, g) => s + g.length, 0);
+  const total = result.closed.length + meldCount;
+  if (total < 10) return null;
+
+  return result;
 }
 
 /**
  * 将 tileId 转为手牌字符串格式
  */
 function tileIdToHandStr(tileId: number): string {
-  const suits = ["m", "p", "s"];
+  const suits = ["m", "s", "p"];
   const suitIndex = Math.floor(tileId / 9);
   const rank = (tileId % 9) + 1;
 
@@ -142,7 +211,6 @@ function tileIdToHandStr(tileId: number): string {
     return `${rank}${suits[suitIndex]}`;
   }
 
-  // 字牌
   const honorMap: Record<number, string> = {
     27: "E",
     28: "S",
@@ -156,37 +224,28 @@ function tileIdToHandStr(tileId: number): string {
 }
 
 /**
- * 将牌组转为手牌字符串（不含花色后缀）
- */
-function tilesToSuitStr(tiles: number[]): string {
-  return tiles.map(tileIdToHandStr).join("");
-}
-
-/**
  * 构建完整手牌字符串（含副露前缀）
- * 闭门手牌 + 副露组
  */
-export function buildHandString(
-  closedTiles: number[],
-  meldGroups: number[][],
-): string {
+export function buildHandString(closed: number[], melds: number[][]): string {
   let handStr = "";
 
   // 副露前缀
-  for (const group of meldGroups) {
-    handStr += `[${tilesToSuitStr(group)},1]`;
+  for (const group of melds) {
+    handStr += `[${group.map(tileIdToHandStr).join("")},1]`;
   }
 
   // 闭门手牌：按花色分组
-  const suits: Record<string, number[]> = { m: [], p: [], s: [], z: [] };
-  for (const tileId of closedTiles) {
+  const suits: Record<string, number[]> = { m: [], s: [], p: [], z: [] };
+  const suitOrder = ["m", "s", "p", "z"];
+  for (const tileId of closed) {
     if (tileId < 9) suits.m.push(tileId + 1);
-    else if (tileId < 18) suits.p.push(tileId - 8);
-    else if (tileId < 27) suits.s.push(tileId - 17);
+    else if (tileId < 18) suits.s.push(tileId - 8);
+    else if (tileId < 27) suits.p.push(tileId - 17);
     else suits.z.push(tileId - 26);
   }
 
-  for (const [suit, ranks] of Object.entries(suits)) {
+  for (const suit of suitOrder) {
+    const ranks = suits[suit];
     if (ranks.length > 0) {
       ranks.sort((a, b) => a - b);
       handStr += ranks.join("") + suit;
@@ -197,11 +256,10 @@ export function buildHandString(
 }
 
 /**
- * 将 tileId 数组转为排序后的字符串，用于手牌变化检测
+ * 用于手牌变化检测
  */
-export function handTilesToStr(tiles: number[]): string {
-  return tiles
-    .slice()
-    .sort((a, b) => a - b)
-    .join(",");
+export function handTilesToStr(closed: number[], melds: number[][]): string {
+  const all = [...closed];
+  for (const g of melds) all.push(...g);
+  return all.sort((a, b) => a - b).join(",");
 }

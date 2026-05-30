@@ -2,7 +2,6 @@ import { infoLog, warnLog } from "../../../shared/logger";
 import { analyzeHand } from "../../../shared/efficiency";
 import {
   getCurrentHandTiles,
-  getMeldGroups,
   buildHandString,
   handTilesToStr,
   getLastStep,
@@ -31,20 +30,19 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 let initTimer: ReturnType<typeof setTimeout> | null = null;
 
 function doAnalysis(): void {
-  const closedTiles = getCurrentHandTiles();
-  if (!closedTiles || closedTiles.length < 10) {
+  const hand = getCurrentHandTiles();
+  if (!hand) {
     showError("未检测到手牌");
     return;
   }
 
-  const meldGroups = getMeldGroups();
-  const handStr = buildHandString(closedTiles, meldGroups);
-  const tileCount =
-    closedTiles.length + meldGroups.reduce((s, g) => s + g.length, 0);
+  const handStr = buildHandString(hand.closed, hand.melds);
+  const meldCount = hand.melds.reduce((s, g) => s + g.length, 0);
+  const tileCount = hand.closed.length + meldCount;
 
   try {
     infoLog(
-      `[Efficiency] 分析手牌 ${tileCount} 张 (闭门${closedTiles.length}+副露${meldGroups.length}组)`,
+      `[Efficiency] 分析手牌 ${tileCount} 张 (闭门${hand.closed.length}+副露${hand.melds.length}组)`,
     );
     showLoading();
 
@@ -73,13 +71,13 @@ function performAnalysis(): void {
   }
   setLastStep(step);
 
-  const closedTiles = getCurrentHandTiles();
-  if (!closedTiles || closedTiles.length < 10) {
+  const hand = getCurrentHandTiles();
+  if (!hand) {
     return;
   }
 
   // 手牌没变，跳过
-  const handStr = handTilesToStr(closedTiles);
+  const handStr = handTilesToStr(hand.closed, hand.melds);
   if (handStr === getLastHandStr()) {
     return;
   }
