@@ -96,7 +96,9 @@ export function analyzeHand(
   options: AnalysisOptions = {},
 ): EfficiencyResult {
   const startTime = Date.now();
-  const handStr = tilesToHandString(handTiles);
+  // 14 张手牌时去掉最后一张，避免枚举所有打牌选择导致超时
+  const tiles = handTiles.length === 14 ? handTiles.slice(0, 13) : handTiles;
+  const handStr = tilesToHandString(tiles);
 
   try {
     const result = analyzeHandDetailed(handStr, {
@@ -135,7 +137,10 @@ export function analyzeHand(
 
 export function analyzeHandQuick(handTiles: number[]): EfficiencyResult {
   const startTime = Date.now();
-  const handStr = tilesToHandString(handTiles);
+
+  // 14 张手牌时去掉最后一张，避免 analyzeEfficiency 枚举所有打牌选择导致超时
+  const tiles = handTiles.length === 14 ? handTiles.slice(0, 13) : handTiles;
+  const handStr = tilesToHandString(tiles);
 
   try {
     const result = analyzeEfficiency(handStr, { fast: true });
@@ -143,7 +148,7 @@ export function analyzeHandQuick(handTiles: number[]): EfficiencyResult {
     return {
       shanten: result.shanten,
       isHu: result.isHu,
-      tileCount: result.tileCount,
+      tileCount: tiles.length,
       hand: result.hand,
       summary: mapSummary(result.summary),
       elapsedMs: Date.now() - startTime,
@@ -153,7 +158,7 @@ export function analyzeHandQuick(handTiles: number[]): EfficiencyResult {
     return {
       shanten: 0,
       isHu: false,
-      tileCount: handTiles.length,
+      tileCount: tiles.length,
       hand: handStr,
       elapsedMs: Date.now() - startTime,
     };
