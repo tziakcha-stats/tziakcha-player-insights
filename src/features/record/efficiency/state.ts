@@ -188,10 +188,11 @@ export function getCurrentHandTiles(): {
   if (typeof st.hd === "string") {
     html = st.hd;
   } else if (Array.isArray(st.hd)) {
-    // hd 是 4 个玩家的手牌 HTML 数组
-    // 需要根据 seat 映射找到 player 0 的手牌
+    // hd 按视觉位置索引：hd[0]=rot0, hd[1]=rot270, hd[2]=rot180, hd[3]=rot90
+    // player 0 的视觉位置 = (4 - seat) % 4
     const seat = ((tz as Record<string, unknown>).seat as number) ?? 0;
-    const playerHtml = st.hd[seat] ?? st.hd[0];
+    const visualPos = (4 - seat) & 3;
+    const playerHtml = st.hd[visualPos];
     if (!playerHtml) return null;
     html = playerHtml;
   } else {
