@@ -53,7 +53,7 @@ describe("formatEfficiencyResult", () => {
     expect(formatted).toContain("期望番: 10.5");
     expect(formatted).toContain("番型: 三色三步高");
     expect(formatted).toContain("--- 进张详情 ---");
-    expect(formatted).toContain("3m×4");
+    expect(formatted).toContain("2m×4");
   });
 
   it("should format 14-tile result with discards", () => {
@@ -79,7 +79,7 @@ describe("formatEfficiencyResult", () => {
 
     const formatted = formatEfficiencyResult(result);
     expect(formatted).toContain("--- 打牌推荐 ---");
-    expect(formatted).toContain("打2m");
+    expect(formatted).toContain("打1m");
     expect(formatted).toContain("效率1.5");
   });
 });

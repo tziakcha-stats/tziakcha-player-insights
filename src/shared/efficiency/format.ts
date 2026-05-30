@@ -91,9 +91,10 @@ export function formatEfficiencyResult(
 }
 
 function tileIdToString(tileId: number): string {
+  // 解析器 tileId: m(1-9), p(10-18), s(19-27), z(28-34)
   const suits = ["m", "p", "s", "z"];
   const suitIndex = Math.floor(tileId / 9);
-  const rank = (tileId % 9) + 1;
+  const rank = tileId - 9 * suitIndex;
 
   if (suitIndex < 3) {
     return `${rank}${suits[suitIndex]}`;
