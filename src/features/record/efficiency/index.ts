@@ -2,6 +2,9 @@ import { infoLog, warnLog } from "../../../shared/logger";
 import { analyzeHand } from "../../../shared/efficiency";
 import {
   getCurrentHandTiles,
+  getMeldGroups,
+  buildHandString,
+  handTilesToStr,
   getLastStep,
   setLastStep,
   getLastHandStr,
@@ -28,17 +31,24 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 let initTimer: ReturnType<typeof setTimeout> | null = null;
 
 function doAnalysis(): void {
-  const handTiles = getCurrentHandTiles();
-  if (!handTiles || handTiles.length < 13) {
+  const closedTiles = getCurrentHandTiles();
+  if (!closedTiles || closedTiles.length < 10) {
     showError("未检测到手牌");
     return;
   }
 
+  const meldGroups = getMeldGroups();
+  const handStr = buildHandString(closedTiles, meldGroups);
+  const tileCount =
+    closedTiles.length + meldGroups.reduce((s, g) => s + g.length, 0);
+
   try {
-    infoLog(`[Efficiency] 分析手牌 ${handTiles.length} 张`);
+    infoLog(
+      `[Efficiency] 分析手牌 ${tileCount} 张 (闭门${closedTiles.length}+副露${meldGroups.length}组)`,
+    );
     showLoading();
 
-    const result = analyzeHand(handTiles);
+    const result = analyzeHand(handStr, tileCount);
 
     renderAnalysis(result);
     setLastResult(result);
@@ -58,29 +68,23 @@ function performAnalysis(): void {
 
   const step = tz.stp;
 
-  // 步骤没变，跳过
   if (step === getLastStep()) {
     return;
   }
   setLastStep(step);
 
-  // 读取手牌
-  const handTiles = getCurrentHandTiles();
-  if (!handTiles || handTiles.length < 13) {
+  const closedTiles = getCurrentHandTiles();
+  if (!closedTiles || closedTiles.length < 10) {
     return;
   }
 
   // 手牌没变，跳过
-  const handStr = handTiles
-    .slice()
-    .sort((a, b) => a - b)
-    .join(",");
+  const handStr = handTilesToStr(closedTiles);
   if (handStr === getLastHandStr()) {
     return;
   }
   setLastHandStr(handStr);
 
-  // 手牌变了，执行分析
   doAnalysis();
 }
 
@@ -127,13 +131,11 @@ export function initEfficiencyAnalysis(): void {
     return;
   }
 
-  // 手动分析按钮
   onAnalyzeClick(() => {
     infoLog("[Efficiency] 手动分析触发");
     doAnalysis();
   });
 
-  // 模式切换按钮
   const modeBtn = document.getElementById("efficiency-mode-btn");
   modeBtn?.addEventListener("click", () => {
     const next = getMode() === "manual" ? "auto" : "manual";

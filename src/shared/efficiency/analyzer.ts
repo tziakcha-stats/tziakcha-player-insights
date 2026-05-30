@@ -5,47 +5,6 @@ import Handtiles from "gb-mahjong-js/lib/core/handtiles";
 import { analyzeHandDetailed } from "gb-mahjong-js/efficiency";
 import { warnLog } from "../logger";
 
-function tilesToHandString(handTiles: number[]): string {
-  const suits = ["m", "p", "s", "z"];
-  const tilesBySuit: Record<string, number[]> = {
-    m: [],
-    p: [],
-    s: [],
-    z: [],
-  };
-
-  for (const tileId of handTiles) {
-    let suit: string;
-    let rank: number;
-
-    if (tileId < 9) {
-      suit = "m";
-      rank = tileId + 1;
-    } else if (tileId < 18) {
-      suit = "p";
-      rank = tileId - 8;
-    } else if (tileId < 27) {
-      suit = "s";
-      rank = tileId - 17;
-    } else {
-      suit = "z";
-      rank = tileId - 26;
-    }
-
-    tilesBySuit[suit].push(rank);
-  }
-
-  let handStr = "";
-  for (const suit of suits) {
-    if (tilesBySuit[suit].length > 0) {
-      tilesBySuit[suit].sort((a, b) => a - b);
-      handStr += tilesBySuit[suit].join("") + suit;
-    }
-  }
-
-  return handStr;
-}
-
 function quickShanten(handStr: string): number {
   try {
     const ht = new Handtiles();
@@ -66,11 +25,14 @@ function quickShanten(handStr: string): number {
 
 /**
  * 分析手牌，返回 gb-mahjong-js 原始结果
- * 向听 > 2 时只返回 shanten 基本信息
+ * @param handStr 手牌字符串（可能包含副露前缀如 [123m,1]）
+ * @param tileCount 手牌总张数（含副露）
  */
-export function analyzeHand(handTiles: number[]): Record<string, unknown> {
+export function analyzeHand(
+  handStr: string,
+  tileCount: number,
+): Record<string, unknown> {
   const startTime = Date.now();
-  const handStr = tilesToHandString(handTiles);
 
   const shanten = quickShanten(handStr);
 
@@ -78,7 +40,7 @@ export function analyzeHand(handTiles: number[]): Record<string, unknown> {
     return {
       shanten,
       isHu: false,
-      tileCount: handTiles.length,
+      tileCount,
       hand: handStr,
       elapsedMs: Date.now() - startTime,
     };
@@ -94,7 +56,7 @@ export function analyzeHand(handTiles: number[]): Record<string, unknown> {
     return {
       shanten,
       isHu: false,
-      tileCount: handTiles.length,
+      tileCount,
       hand: handStr,
       elapsedMs: Date.now() - startTime,
     };
