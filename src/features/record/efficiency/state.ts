@@ -196,17 +196,12 @@ export function getCurrentHandTiles(): {
 }
 
 /**
- * 将 tileId 转为手牌字符串格式
+ * 将一组牌 ID 转为紧凑格式
+ * [8,8,8] -> "999m", [27,28,29] -> "ESW"
  */
-function tileIdToHandStr(tileId: number): string {
-  const suits = ["m", "s", "p"];
-  const suitIndex = Math.floor(tileId / 9);
-  const rank = (tileId % 9) + 1;
-
-  if (suitIndex < 3) {
-    return `${rank}${suits[suitIndex]}`;
-  }
-
+function tileGroupToStr(tileIds: number[]): string {
+  const suits: Record<string, number[]> = { m: [], s: [], p: [], z: [] };
+  const honors: string[] = [];
   const honorMap: Record<number, string> = {
     27: "E",
     28: "S",
@@ -216,37 +211,46 @@ function tileIdToHandStr(tileId: number): string {
     32: "F",
     33: "P",
   };
-  return honorMap[tileId] ?? `${tileId - 26}z`;
+
+  for (const tileId of tileIds) {
+    if (tileId < 9) suits.m.push(tileId + 1);
+    else if (tileId < 18) suits.s.push(tileId - 8);
+    else if (tileId < 27) suits.p.push(tileId - 17);
+    else if (honorMap[tileId]) honors.push(honorMap[tileId]);
+    else suits.z.push(tileId - 26);
+  }
+
+  let str = "";
+  for (const suit of ["m", "s", "p"]) {
+    if (suits[suit].length > 0) {
+      suits[suit].sort((a, b) => a - b);
+      str += suits[suit].join("") + suit;
+    }
+  }
+  if (honors.length > 0) {
+    str += honors.join("");
+  }
+  if (suits.z.length > 0) {
+    suits.z.sort((a, b) => a - b);
+    str += suits.z.join("") + "z";
+  }
+  return str;
 }
 
 /**
  * 构建完整手牌字符串（含副露前缀）
+ * 例: [999m,1]7m678888s2779p
  */
 export function buildHandString(closed: number[], melds: number[][]): string {
   let handStr = "";
 
-  // 副露前缀
+  // 副露前缀：[999m,1] 格式
   for (const group of melds) {
-    handStr += `[${group.map(tileIdToHandStr).join("")},1]`;
+    handStr += `[${tileGroupToStr(group)},1]`;
   }
 
-  // 闭门手牌：按花色分组
-  const suits: Record<string, number[]> = { m: [], s: [], p: [], z: [] };
-  const suitOrder = ["m", "s", "p", "z"];
-  for (const tileId of closed) {
-    if (tileId < 9) suits.m.push(tileId + 1);
-    else if (tileId < 18) suits.s.push(tileId - 8);
-    else if (tileId < 27) suits.p.push(tileId - 17);
-    else suits.z.push(tileId - 26);
-  }
-
-  for (const suit of suitOrder) {
-    const ranks = suits[suit];
-    if (ranks.length > 0) {
-      ranks.sort((a, b) => a - b);
-      handStr += ranks.join("") + suit;
-    }
-  }
+  // 闭门手牌
+  handStr += tileGroupToStr(closed);
 
   return handStr;
 }
