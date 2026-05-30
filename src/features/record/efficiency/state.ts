@@ -198,12 +198,16 @@ export function getCurrentHandTiles(): {
   const visualPos = (playerIndex + 4 - seat) & 3;
 
   let html: string;
-  if (typeof st.hd === "string") {
-    html = st.hd;
-  } else if (Array.isArray(st.hd)) {
+  if (Array.isArray(st.hd)) {
+    // 全量更新：hd 是 4 个玩家的手牌 HTML 数组
     const playerHtml = st.hd[visualPos];
     if (!playerHtml) return null;
     html = playerHtml;
+  } else if (typeof st.hd === "string") {
+    // 单玩家更新：hd 是当前操作玩家 (st.k) 的手牌 HTML
+    const k = typeof st.k === "number" ? st.k : 0;
+    if (k !== visualPos) return null; // 不是目标玩家的手牌
+    html = st.hd;
   } else {
     return null;
   }
