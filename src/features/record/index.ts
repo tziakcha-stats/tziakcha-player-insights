@@ -2,6 +2,7 @@ import { infoLog } from "../../shared/logger";
 import { w } from "../../shared/env";
 import { mountRecordFavoriteEntry } from "../favorites/record-entry";
 import { installRecordJsonParseGuard } from "./guards";
+import { initEfficiencyAnalysis } from "./efficiency";
 import { initReviewer } from "./reviewer/init";
 import { setReviewError } from "./reviewer/state";
 import { interceptTZ } from "./tz-interceptor";
@@ -24,6 +25,7 @@ export function initRecordFeature(href: string): boolean {
 
   w.setTimeout(initReviewer, 500);
   w.setTimeout(() => mountRecordFavoriteEntry(), 550);
+  w.setTimeout(initEfficiencyAnalysis, 600);
 
   return true;
 }
