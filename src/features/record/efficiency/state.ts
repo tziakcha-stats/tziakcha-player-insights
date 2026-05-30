@@ -1,19 +1,23 @@
 import { w } from "../../../shared/env";
 
+const FLOWER_TILE_VAL_MIN = 136;
+const PLAYER_INDEX = 0;
+
 interface EfficiencyState {
-  lastAnalyzedStep: number | null;
-  lastAnalysisResult: Record<string, unknown> | null;
+  lastStep: number | null;
+  lastHandStr: string | null;
+  lastResult: Record<string, unknown> | null;
 }
 
 const STATE_KEY = "__efficiency_state";
-const FLOWER_TILE_VAL_MIN = 136;
 
 function getState(): EfficiencyState {
   const win = w as unknown as Record<string, unknown>;
   if (!win[STATE_KEY]) {
     win[STATE_KEY] = {
-      lastAnalyzedStep: null,
-      lastAnalysisResult: null,
+      lastStep: null,
+      lastHandStr: null,
+      lastResult: null,
     };
   }
   return win[STATE_KEY] as EfficiencyState;
@@ -21,37 +25,44 @@ function getState(): EfficiencyState {
 
 export function resetState(): void {
   (w as unknown as Record<string, unknown>)[STATE_KEY] = {
-    lastAnalyzedStep: null,
-    lastAnalysisResult: null,
+    lastStep: null,
+    lastHandStr: null,
+    lastResult: null,
   };
 }
 
-export function getLastAnalyzedStep(): number | null {
-  return getState().lastAnalyzedStep;
+export function getLastStep(): number | null {
+  return getState().lastStep;
 }
 
-export function setLastAnalyzedStep(step: number): void {
-  getState().lastAnalyzedStep = step;
+export function setLastStep(step: number): void {
+  getState().lastStep = step;
 }
 
-export function getAnalysisResult(): Record<string, unknown> | null {
-  return getState().lastAnalysisResult;
+export function getLastHandStr(): string | null {
+  return getState().lastHandStr;
 }
 
-export function setAnalysisResult(result: Record<string, unknown>): void {
-  getState().lastAnalysisResult = result;
+export function setLastHandStr(handStr: string): void {
+  getState().lastHandStr = handStr;
+}
+
+export function getLastResult(): Record<string, unknown> | null {
+  return getState().lastResult;
+}
+
+export function setLastResult(result: Record<string, unknown>): void {
+  getState().lastResult = result;
 }
 
 /**
- * Get current hand tiles from DOM
- * @param playerIndex - 当前玩家索引，从 tz.stat[tz.stp].k 获取
- * @returns Array of tile IDs (0-33), or null if not available
+ * 读取 player 0 的手牌 tileId 数组
  */
-export function getCurrentHandTiles(playerIndex: number = 0): number[] | null {
+export function getCurrentHandTiles(): number[] | null {
   const handContainers = document.querySelectorAll(".hand");
-  if (handContainers.length <= playerIndex) return null;
+  if (handContainers.length <= PLAYER_INDEX) return null;
 
-  const handContainer = handContainers[playerIndex] as HTMLElement;
+  const handContainer = handContainers[PLAYER_INDEX] as HTMLElement;
   const tileElements = handContainer.querySelectorAll(".tl");
   if (tileElements.length === 0) return null;
 
@@ -62,10 +73,19 @@ export function getCurrentHandTiles(playerIndex: number = 0): number[] | null {
     if (val) {
       const rawVal = parseInt(val, 10);
       if (rawVal >= FLOWER_TILE_VAL_MIN) return;
-      const tileId = Math.floor(rawVal / 4);
-      tiles.push(tileId);
+      tiles.push(Math.floor(rawVal / 4));
     }
   });
 
   return tiles.length > 0 ? tiles : null;
+}
+
+/**
+ * 将 tileId 数组转为排序后的字符串，用于手牌变化检测
+ */
+export function handTilesToStr(tiles: number[]): string {
+  return tiles
+    .slice()
+    .sort((a, b) => a - b)
+    .join(",");
 }

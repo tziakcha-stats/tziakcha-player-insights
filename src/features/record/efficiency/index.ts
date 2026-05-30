@@ -2,23 +2,20 @@ import { infoLog, warnLog } from "../../../shared/logger";
 import { analyzeHand } from "../../../shared/efficiency";
 import {
   getCurrentHandTiles,
-  getLastAnalyzedStep,
-  setLastAnalyzedStep,
-  setAnalysisResult,
+  handTilesToStr,
+  getLastStep,
+  setLastStep,
+  getLastHandStr,
+  setLastHandStr,
+  getLastResult,
+  setLastResult,
   resetState,
 } from "./state";
-import {
-  mountEfficiencyPanel,
-  showLoading,
-  showError,
-  renderAnalysis,
-  clearAnalysis,
-} from "./ui";
+import { mountEfficiencyPanel, showError, renderAnalysis } from "./ui";
 import { getTZInstance } from "../reviewer/state";
 
 const POLL_INTERVAL_MS = 200;
 const INIT_DELAY_MS = 100;
-const MIN_HAND_TILES = 13;
 
 let isInitialized = false;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -32,29 +29,35 @@ function performAnalysis(): void {
 
   const step = tz.stp;
 
-  if (step === getLastAnalyzedStep()) {
+  // 步骤没变，跳过
+  if (step === getLastStep()) {
+    return;
+  }
+  setLastStep(step);
+
+  // 读取 player 0 的手牌
+  const handTiles = getCurrentHandTiles();
+  if (!handTiles || handTiles.length < 13) {
     return;
   }
 
-  const playerIndex =
-    typeof tz.stat?.[step]?.k === "number" ? tz.stat[step].k : 0;
-  const handTiles = getCurrentHandTiles(playerIndex);
-  if (!handTiles || handTiles.length < MIN_HAND_TILES) {
-    clearAnalysis();
+  // 手牌没变（不是 player 0 的摸牌/打牌/副露），跳过
+  const handStr = handTilesToStr(handTiles);
+  if (handStr === getLastHandStr()) {
     return;
   }
+  setLastHandStr(handStr);
 
+  // 手牌变了，执行分析
   try {
-    infoLog(`[Efficiency] 分析步骤 ${step}，手牌 ${handTiles.length} 张`);
-    showLoading();
+    infoLog(`[Efficiency] 步骤 ${step}，手牌 ${handTiles.length} 张`);
 
     const result = analyzeHand(handTiles);
 
     renderAnalysis(result);
-    setLastAnalyzedStep(step);
-    setAnalysisResult(result);
+    setLastResult(result);
 
-    infoLog(`[Efficiency] 分析完成，耗时 ${result.elapsedMs}ms`);
+    infoLog(`[Efficiency] 完成，耗时 ${result.elapsedMs}ms`);
   } catch (error) {
     warnLog("[Efficiency] 分析失败:", error);
     showError("分析失败");

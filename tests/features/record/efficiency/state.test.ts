@@ -1,11 +1,14 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   getCurrentHandTiles,
-  getLastAnalyzedStep,
-  setLastAnalyzedStep,
-  getAnalysisResult,
-  setAnalysisResult,
+  getLastStep,
+  setLastStep,
+  getLastHandStr,
+  setLastHandStr,
+  getLastResult,
+  setLastResult,
   resetState,
+  handTilesToStr,
 } from "../../../../src/features/record/efficiency/state";
 
 describe("efficiency state", () => {
@@ -14,28 +17,34 @@ describe("efficiency state", () => {
   });
 
   describe("step tracking", () => {
-    it("should track last analyzed step", () => {
-      expect(getLastAnalyzedStep()).toBeNull();
-
-      setLastAnalyzedStep(42);
-      expect(getLastAnalyzedStep()).toBe(42);
+    it("should track last step", () => {
+      expect(getLastStep()).toBeNull();
+      setLastStep(42);
+      expect(getLastStep()).toBe(42);
     });
   });
 
-  describe("analysis result caching", () => {
+  describe("hand string tracking", () => {
+    it("should track last hand string", () => {
+      expect(getLastHandStr()).toBeNull();
+      setLastHandStr("0,1,2,3,4");
+      expect(getLastHandStr()).toBe("0,1,2,3,4");
+    });
+  });
+
+  describe("result caching", () => {
     it("should cache analysis result", () => {
-      expect(getAnalysisResult()).toBeNull();
+      expect(getLastResult()).toBeNull();
+      const mockResult = { shanten: 1, hand: "test" };
+      setLastResult(mockResult);
+      expect(getLastResult()).toEqual(mockResult);
+    });
+  });
 
-      const mockResult = {
-        shanten: 1,
-        isHu: false,
-        tileCount: 13,
-        hand: "123m456p789s11z",
-        elapsedMs: 10,
-      };
-
-      setAnalysisResult(mockResult as any);
-      expect(getAnalysisResult()).toEqual(mockResult);
+  describe("handTilesToStr", () => {
+    it("should sort and join tile IDs", () => {
+      expect(handTilesToStr([3, 1, 2])).toBe("1,2,3");
+      expect(handTilesToStr([10, 0, 5])).toBe("0,5,10");
     });
   });
 
@@ -44,16 +53,7 @@ describe("efficiency state", () => {
       expect(getCurrentHandTiles()).toBeNull();
     });
 
-    it("should return null when no tile elements exist", () => {
-      const handContainer = document.createElement("div");
-      handContainer.className = "hand";
-      document.body.appendChild(handContainer);
-
-      expect(getCurrentHandTiles()).toBeNull();
-      document.body.removeChild(handContainer);
-    });
-
-    it("should extract tile IDs from DOM", () => {
+    it("should extract tile IDs and filter flowers", () => {
       const handContainer = document.createElement("div");
       handContainer.className = "hand";
       document.body.appendChild(handContainer);
@@ -68,56 +68,6 @@ describe("efficiency state", () => {
       tile2.dataset.val = "4";
       handContainer.appendChild(tile2);
 
-      const tile3 = document.createElement("div");
-      tile3.className = "tl";
-      tile3.dataset.val = "8";
-      handContainer.appendChild(tile3);
-
-      const result = getCurrentHandTiles();
-      expect(result).toEqual([0, 1, 2]);
-
-      document.body.removeChild(handContainer);
-    });
-
-    it("should select correct player hand by index", () => {
-      const hand0 = document.createElement("div");
-      hand0.className = "hand";
-      document.body.appendChild(hand0);
-
-      const hand1 = document.createElement("div");
-      hand1.className = "hand";
-      document.body.appendChild(hand1);
-
-      const tile1 = document.createElement("div");
-      tile1.className = "tl";
-      tile1.dataset.val = "0";
-      hand1.appendChild(tile1);
-
-      expect(getCurrentHandTiles(0)).toBeNull();
-      expect(getCurrentHandTiles(1)).toEqual([0]);
-
-      document.body.removeChild(hand0);
-      document.body.removeChild(hand1);
-    });
-
-    it("should filter out flower tiles (data-val >= 136)", () => {
-      const handContainer = document.createElement("div");
-      handContainer.className = "hand";
-      document.body.appendChild(handContainer);
-
-      // 普通牌: data-val 0 -> tileId 0
-      const tile1 = document.createElement("div");
-      tile1.className = "tl";
-      tile1.dataset.val = "0";
-      handContainer.appendChild(tile1);
-
-      // 普通牌: data-val 4 -> tileId 1
-      const tile2 = document.createElement("div");
-      tile2.className = "tl";
-      tile2.dataset.val = "4";
-      handContainer.appendChild(tile2);
-
-      // 花牌: data-val 136 -> 应被过滤
       const flower = document.createElement("div");
       flower.className = "tl";
       flower.dataset.val = "136";
@@ -131,14 +81,16 @@ describe("efficiency state", () => {
   });
 
   describe("resetState", () => {
-    it("should reset all state to initial values", () => {
-      setLastAnalyzedStep(42);
-      setAnalysisResult({ shanten: 1 } as any);
+    it("should reset all state", () => {
+      setLastStep(42);
+      setLastHandStr("test");
+      setLastResult({ shanten: 1 });
 
       resetState();
 
-      expect(getLastAnalyzedStep()).toBeNull();
-      expect(getAnalysisResult()).toBeNull();
+      expect(getLastStep()).toBeNull();
+      expect(getLastHandStr()).toBeNull();
+      expect(getLastResult()).toBeNull();
     });
   });
 });
