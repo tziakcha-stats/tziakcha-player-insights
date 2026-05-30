@@ -57,10 +57,12 @@ export function setAnalysisResult(result: EfficiencyResult): void {
   getState().lastAnalysisResult = result;
 }
 
+const FLOWER_TILE_VAL_MIN = 136;
+
 /**
  * Get current hand tiles from DOM
  * @param playerIndex - 当前玩家索引，从 tz.stat[tz.stp].k 获取
- * @returns Array of tile IDs, or null if not available
+ * @returns Array of tile IDs (0-33), or null if not available
  */
 export function getCurrentHandTiles(playerIndex: number = 0): number[] | null {
   const handContainers = document.querySelectorAll(".hand");
@@ -75,7 +77,10 @@ export function getCurrentHandTiles(playerIndex: number = 0): number[] | null {
     const htmlEl = el as HTMLElement;
     const val = htmlEl.dataset.val;
     if (val) {
-      const tileId = Math.floor(parseInt(val, 10) / 4);
+      const rawVal = parseInt(val, 10);
+      // 跳过花牌 (data-val >= 136)
+      if (rawVal >= FLOWER_TILE_VAL_MIN) return;
+      const tileId = Math.floor(rawVal / 4);
       tiles.push(tileId);
     }
   });

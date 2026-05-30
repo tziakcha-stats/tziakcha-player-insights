@@ -99,6 +99,35 @@ describe("efficiency state", () => {
       document.body.removeChild(hand0);
       document.body.removeChild(hand1);
     });
+
+    it("should filter out flower tiles (data-val >= 136)", () => {
+      const handContainer = document.createElement("div");
+      handContainer.className = "hand";
+      document.body.appendChild(handContainer);
+
+      // 普通牌: data-val 0 -> tileId 0
+      const tile1 = document.createElement("div");
+      tile1.className = "tl";
+      tile1.dataset.val = "0";
+      handContainer.appendChild(tile1);
+
+      // 普通牌: data-val 4 -> tileId 1
+      const tile2 = document.createElement("div");
+      tile2.className = "tl";
+      tile2.dataset.val = "4";
+      handContainer.appendChild(tile2);
+
+      // 花牌: data-val 136 -> 应被过滤
+      const flower = document.createElement("div");
+      flower.className = "tl";
+      flower.dataset.val = "136";
+      handContainer.appendChild(flower);
+
+      const result = getCurrentHandTiles();
+      expect(result).toEqual([0, 1]);
+
+      document.body.removeChild(handContainer);
+    });
   });
 
   describe("resetState", () => {
